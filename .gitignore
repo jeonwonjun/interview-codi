@@ -1,0 +1,36 @@
+# Operating system files
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+
+# Local IDE settings
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# Gradle caches and backend build output
+.gradle/
+/backend/build/
+/backend/out/
+
+# Frontend dependencies and generated output
+node_modules/
+/frontend/dist/
+/frontend/coverage/
+/frontend/.vite/
+*.tsbuildinfo
+
+# Local environment settings; keep example files versioned
+.env
+.env.*
+!.env.example
+!.env.*.example
+/backend/src/main/resources/application-local.properties
+/backend/src/main/resources/application-local.yml
+/backend/src/main/resources/application-local.yaml
+
+# Runtime logs
+*.log
