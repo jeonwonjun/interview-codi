@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Link } from 'react-router'
 import styles from './Layout.module.css'
 
 export function Layout({ actions, children }: { actions?: ReactNode; children: ReactNode }) {
@@ -6,10 +7,10 @@ export function Layout({ actions, children }: { actions?: ReactNode; children: R
     <>
       <header>
         <nav className={styles.nav}>
-          <span className={styles.brand}>
+          <Link to="/" className={styles.brand}>
             <img className={styles.logo} src="/favicon.svg" alt="" />
             면접코디
-          </span>
+          </Link>
           {actions}
         </nav>
       </header>

@@ -1,10 +1,15 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { BrowserRouter, Link, Navigate, Route, Routes } from 'react-router'
 import { LoginPage } from './features/auth/LoginPage'
 import { useAuth } from './features/auth/useAuth'
+import { HistoryPage } from './features/history/HistoryPage'
 import { HomePage } from './features/home/HomePage'
+import { PracticePage } from './features/practice/PracticePage'
+import { setUnauthorizedHandler } from './shared/api/client'
 import { Button } from './shared/ui/Button'
 import { ErrorBanner } from './shared/ui/ErrorBanner'
 import { Layout } from './shared/ui/Layout'
+import layoutStyles from './shared/ui/Layout.module.css'
 
 /** 백엔드가 로그인 실패 시 "/?login=error"로 돌려보낸다. 한 번 보여 준 뒤 주소에서 지운다. */
 function consumeLoginError(): boolean {
@@ -18,9 +23,22 @@ function consumeLoginError(): boolean {
 }
 
 export default function App() {
-  const { state, logout } = useAuth()
+  return (
+    <BrowserRouter>
+      <AuthenticatedApp />
+    </BrowserRouter>
+  )
+}
+
+function AuthenticatedApp() {
+  const { state, logout, markAnonymous } = useAuth()
   const [loginFailed] = useState(consumeLoginError)
   const [logoutFailed, setLogoutFailed] = useState(false)
+
+  useEffect(() => {
+    setUnauthorizedHandler(markAnonymous)
+    return () => setUnauthorizedHandler(undefined)
+  }, [markAnonymous])
 
   const handleLogout = async () => {
     try {
@@ -53,13 +71,23 @@ export default function App() {
   return (
     <Layout
       actions={
-        <Button variant="ghost" onClick={handleLogout}>
-          로그아웃
-        </Button>
+        <div className={layoutStyles.actions}>
+          <Link to="/practices" className={layoutStyles.navLink}>
+            기록
+          </Link>
+          <Button variant="ghost" onClick={() => void handleLogout()}>
+            로그아웃
+          </Button>
+        </div>
       }
     >
       {logoutFailed && <ErrorBanner>로그아웃하지 못했어요. 다시 시도해 주세요.</ErrorBanner>}
-      <HomePage />
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/practices" element={<HistoryPage />} />
+        <Route path="/practices/:practiceId" element={<PracticePage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </Layout>
   )
 }

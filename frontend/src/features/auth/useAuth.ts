@@ -37,5 +37,8 @@ export function useAuth() {
     setState({ status: 'anonymous' })
   }, [])
 
-  return { state, logout }
+  /** API가 401을 받으면(세션 만료 등) 로그인 화면으로 돌아간다. */
+  const markAnonymous = useCallback(() => setState({ status: 'anonymous' }), [])
+
+  return { state, logout, markAnonymous }
 }

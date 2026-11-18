@@ -5,7 +5,17 @@
  * - 상태를 바꾸는 요청에는 브라우저가 Origin 헤더를 붙이므로 따로 CSRF 토큰을 보내지 않는다.
  * - 오류는 백엔드의 ProblemDetail을 읽어 ApiError로 던진다. 화면은 code로 분기한다.
  */
-export type ErrorCode = 'LOGIN_REQUIRED' | 'FORBIDDEN_ORIGIN' | (string & {})
+export type ErrorCode =
+  | 'LOGIN_REQUIRED'
+  | 'FORBIDDEN_ORIGIN'
+  | 'PRACTICE_NOT_FOUND'
+  | 'PRACTICE_COMPLETED'
+  | 'NOT_CURRENT_QUESTION'
+  | 'REVISION_CONFLICT'
+  | 'NOT_LATEST_REVISION'
+  | 'NO_MORE_QUESTIONS'
+  | 'INVALID_ANSWER_CONTENT'
+  | (string & {})
 
 export class ApiError extends Error {
   readonly status: number
@@ -29,6 +39,13 @@ type ProblemDetail = {
   code?: string
 }
 
+let onUnauthorized: (() => void) | undefined
+
+/** 로그인이 풀렸을 때(401) 화면 전체가 로그인 화면으로 돌아가도록 App이 등록한다. */
+export function setUnauthorizedHandler(handler: (() => void) | undefined) {
+  onUnauthorized = handler
+}
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const response = await fetch(path, {
     method,
@@ -37,7 +54,11 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   })
 
   if (!response.ok) {
-    throw await toApiError(response)
+    const error = await toApiError(response)
+    if (error.isLoginRequired) {
+      onUnauthorized?.()
+    }
+    throw error
   }
   if (response.status === 204) {
     return undefined as T
@@ -57,4 +78,5 @@ async function toApiError(response: Response): Promise<ApiError> {
 export const api = {
   get: <T>(path: string) => request<T>('GET', path),
   post: <T>(path: string, body?: unknown) => request<T>('POST', path, body),
+  delete: <T>(path: string) => request<T>('DELETE', path),
 }
