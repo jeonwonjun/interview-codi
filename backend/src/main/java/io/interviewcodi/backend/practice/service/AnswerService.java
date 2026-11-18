@@ -3,7 +3,9 @@ package io.interviewcodi.backend.practice.service;
 import io.interviewcodi.backend.common.error.BusinessException;
 import io.interviewcodi.backend.common.error.ErrorCode;
 import io.interviewcodi.backend.practice.domain.AiRequestKind;
+import io.interviewcodi.backend.practice.domain.AiRequestStatus;
 import io.interviewcodi.backend.practice.domain.PracticeStatus;
+import io.interviewcodi.backend.practice.dto.AiRequestResponse;
 import io.interviewcodi.backend.practice.dto.AnswerAttemptResponse;
 import io.interviewcodi.backend.practice.repository.AiRequestRepository;
 import io.interviewcodi.backend.practice.repository.AiRequestRepository.RequestRow;
@@ -76,6 +78,35 @@ public class AnswerService {
         return new SubmitResult(load(practiceId, answerId), true);
     }
 
+    /**
+     * 현재 버전의 피드백을 다시 요청한다. 실패한 경우에만 새로 만들고, 처리 중이거나 성공했으면 그 요청을 돌려준다.
+     * 같은 재요청이 동시에 들어와도 연습 행 잠금 아래에서 확인하고, 부분 유일 인덱스가 마지막으로 막는다.
+     */
+    @Transactional
+    public FeedbackRequestResult requestFeedback(long userId, long revisionId) {
+        long practiceId = answerRepository.findPracticeIdForOwner(revisionId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ANSWER_REVISION_NOT_FOUND));
+        PracticeStatus status = practiceRepository.lockForOwner(practiceId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ANSWER_REVISION_NOT_FOUND));
+        if (status != PracticeStatus.IN_PROGRESS) {
+            throw new BusinessException(ErrorCode.PRACTICE_COMPLETED);
+        }
+        if (!answerRepository.isCurrentRevision(revisionId)) {
+            throw new BusinessException(ErrorCode.NOT_LATEST_REVISION);
+        }
+        Optional<RequestRow> latest = aiRequestRepository.findLatestFeedbackRequest(revisionId);
+        if (latest.isPresent() && latest.get().status() != AiRequestStatus.FAILED
+                && latest.get().status() != AiRequestStatus.DISCARDED) {
+            return new FeedbackRequestResult(toResponse(latest.get()), false);
+        }
+        long requestId = aiRequestRepository.insertPending(practiceId, AiRequestKind.FEEDBACK, revisionId);
+        return new FeedbackRequestResult(new AiRequestResponse(requestId, AiRequestStatus.PENDING.name()), true);
+    }
+
+    private static AiRequestResponse toResponse(RequestRow row) {
+        return new AiRequestResponse(row.id(), row.status().name());
+    }
+
     private AnswerAttemptResponse load(long practiceId, long answerId) {
         AttemptRow attempt = answerRepository.findAttemptWithCurrentRevision(answerId).orElseThrow();
         Map<Long, RequestRow> requests = aiRequestRepository.findLatestFeedbackRequests(practiceId).stream()
@@ -94,5 +125,8 @@ public class AnswerService {
     }
 
     public record SubmitResult(AnswerAttemptResponse attempt, boolean created) {
+    }
+
+    public record FeedbackRequestResult(AiRequestResponse request, boolean created) {
     }
 }
