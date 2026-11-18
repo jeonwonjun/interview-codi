@@ -1,0 +1,17 @@
+import type { ButtonHTMLAttributes } from 'react'
+import styles from './Button.module.css'
+
+type Variant = 'primary' | 'secondary' | 'ghost'
+
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: Variant
+  block?: boolean
+}
+
+/** DESIGN.md의 button-primary·secondary·ghost. 한 화면의 primary는 하나만 둔다. */
+export function Button({ variant = 'primary', block = false, className, type = 'button', ...props }: ButtonProps) {
+  const classes = [styles.button, styles[variant], block ? styles.block : undefined, className]
+    .filter(Boolean)
+    .join(' ')
+  return <button type={type} className={classes} {...props} />
+}

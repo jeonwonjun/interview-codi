@@ -1,0 +1,24 @@
+/* 카카오 로그인 디자인 가이드: 배경 #FEE500, 글자 85% 검정, 모서리 12px, 말풍선 심볼 */
+.button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  width: 100%;
+  height: 52px;
+  border-radius: var(--rounded-md);
+  background: var(--color-kakao);
+  color: rgba(0, 0, 0, 0.85);
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.button:hover {
+  filter: brightness(0.97);
+}
+
+.symbol {
+  width: 18px;
+  height: 18px;
+}

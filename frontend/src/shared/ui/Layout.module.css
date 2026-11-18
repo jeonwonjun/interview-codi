@@ -1,0 +1,28 @@
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.logo {
+  width: 28px;
+  height: 28px;
+}
+
+.main {
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+  padding: 0 var(--space-lg) var(--space-4xl);
+}
