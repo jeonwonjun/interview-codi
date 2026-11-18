@@ -105,7 +105,10 @@ public class PracticeService {
         boolean canProceed = practice.status() == PracticeStatus.IN_PROGRESS;
         return new PracticeResponse(practice.id(), practice.startMode().name(), practice.status().name(),
                 practice.createdAt(), practice.completedAt(), canProceed,
-                canProceed ? null : practice.status().name(), questionResponses);
+                canProceed ? null : practice.status().name(), questionResponses,
+                aiRequestRepository.findActiveFollowUp(practiceId)
+                        .map(request -> new AiRequestResponse(request.id(), request.status().name()))
+                        .orElse(null));
     }
 
     /**

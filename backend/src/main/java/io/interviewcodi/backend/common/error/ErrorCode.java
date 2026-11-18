@@ -22,6 +22,7 @@ public enum ErrorCode {
     PRACTICE_COMPLETED(HttpStatus.CONFLICT, "이미 마친 연습입니다. 새 연습을 시작해 주세요."),
     NOT_CURRENT_QUESTION(HttpStatus.CONFLICT, "지금 진행 중인 질문이 아닙니다."),
     REVISION_CONFLICT(HttpStatus.CONFLICT, "다른 곳에서 먼저 수정된 답변이에요. 최신 내용을 확인한 뒤 다시 수정해 주세요."),
+    NO_MORE_QUESTIONS(HttpStatus.CONFLICT, "준비한 질문을 모두 연습했어요. 연습을 마치거나 지금 질문에 다시 답해 보세요."),
     NOT_LATEST_REVISION(HttpStatus.CONFLICT, "수정된 답변이 있어요. 최신 답변으로 다시 시도해 주세요.");
 
     private final HttpStatus status;

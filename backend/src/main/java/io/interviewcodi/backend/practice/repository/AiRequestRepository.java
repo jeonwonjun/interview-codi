@@ -171,6 +171,35 @@ public class AiRequestRepository {
                 .update();
     }
 
+    /** 이 버전·종류의 처리 중(PENDING·RUNNING) 요청. 부분 유일 인덱스 때문에 최대 하나다. */
+    public Optional<RequestRow> findActive(long answerRevisionId, AiRequestKind kind) {
+        return jdbcClient.sql("""
+                        select id, answer_revision_id, status
+                        from ai_requests
+                        where answer_revision_id = :answerRevisionId and kind = :kind
+                          and status in ('PENDING', 'RUNNING')
+                        """)
+                .param("answerRevisionId", answerRevisionId)
+                .param("kind", kind.name())
+                .query(RequestRow.class)
+                .optional();
+    }
+
+    /** 이 연습에서 처리 중인 가장 최근 꼬리질문 요청. 재접속한 화면이 폴링을 이어가는 데 쓴다. */
+    public Optional<RequestRow> findActiveFollowUp(long practiceId) {
+        return jdbcClient.sql("""
+                        select id, answer_revision_id, status
+                        from ai_requests
+                        where practice_id = :practiceId and kind = 'FOLLOW_UP_QUESTION'
+                          and status in ('PENDING', 'RUNNING')
+                        order by id desc
+                        limit 1
+                        """)
+                .param("practiceId", practiceId)
+                .query(RequestRow.class)
+                .optional();
+    }
+
     /** 이 버전의 가장 최근 피드백 요청. */
     public Optional<RequestRow> findLatestFeedbackRequest(long answerRevisionId) {
         return jdbcClient.sql("""

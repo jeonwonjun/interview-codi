@@ -3,6 +3,8 @@ package io.interviewcodi.backend.practice.service;
 import io.interviewcodi.backend.practice.client.AiGenerationException;
 import io.interviewcodi.backend.practice.client.FeedbackGenerator;
 import io.interviewcodi.backend.practice.client.FeedbackGenerator.GeneratedFeedback;
+import io.interviewcodi.backend.practice.client.FollowUpQuestionGenerator;
+import io.interviewcodi.backend.practice.client.FollowUpQuestionGenerator.GeneratedQuestion;
 import io.interviewcodi.backend.practice.domain.AiRequestKind;
 import io.interviewcodi.backend.practice.repository.AiRequestRepository.ClaimedRequest;
 import io.interviewcodi.backend.practice.service.AiRequestQueueService.Claim;
@@ -26,10 +28,13 @@ public class AiRequestProcessingService {
 
     private final AiRequestQueueService queue;
     private final FeedbackGenerator feedbackGenerator;
+    private final FollowUpQuestionGenerator followUpQuestionGenerator;
 
-    AiRequestProcessingService(AiRequestQueueService queue, FeedbackGenerator feedbackGenerator) {
+    AiRequestProcessingService(AiRequestQueueService queue, FeedbackGenerator feedbackGenerator,
+                               FollowUpQuestionGenerator followUpQuestionGenerator) {
         this.queue = queue;
         this.feedbackGenerator = feedbackGenerator;
+        this.followUpQuestionGenerator = followUpQuestionGenerator;
     }
 
     /**
@@ -44,15 +49,9 @@ public class AiRequestProcessingService {
         if (request == null) {
             return true;
         }
-        if (request.kind() != AiRequestKind.FEEDBACK) {
-            // 꼬리질문 생성은 4단계에서 연결한다. 그 전에 쌓인 요청은 실패로 남긴다.
-            queue.fail(request, "UNSUPPORTED_KIND");
-            return true;
-        }
         Outcome outcome;
         try {
-            GeneratedFeedback feedback = feedbackGenerator.generate(queue.loadFeedbackInput(request));
-            outcome = queue.applyFeedback(request, feedback);
+            outcome = generateAndApply(request);
         } catch (AiGenerationException ex) {
             outcome = queue.fail(request, ex.getErrorType());
         } catch (RuntimeException ex) {
@@ -63,5 +62,14 @@ public class AiRequestProcessingService {
         log.info("AI request {} ({}, attempt {}) -> {}", request.id(), request.kind(), request.attemptCount(),
                 outcome);
         return true;
+    }
+
+    private Outcome generateAndApply(ClaimedRequest request) {
+        if (request.kind() == AiRequestKind.FEEDBACK) {
+            GeneratedFeedback feedback = feedbackGenerator.generate(queue.loadFeedbackInput(request));
+            return queue.applyFeedback(request, feedback);
+        }
+        GeneratedQuestion question = followUpQuestionGenerator.generate(queue.loadFollowUpInput(request));
+        return queue.applyFollowUp(request, question);
     }
 }

@@ -2,14 +2,20 @@ package io.interviewcodi.backend.practice.service;
 
 import io.interviewcodi.backend.practice.client.FeedbackGenerator.FeedbackInput;
 import io.interviewcodi.backend.practice.client.FeedbackGenerator.GeneratedFeedback;
+import io.interviewcodi.backend.practice.client.FollowUpQuestionGenerator.FollowUpInput;
+import io.interviewcodi.backend.practice.client.FollowUpQuestionGenerator.GeneratedQuestion;
 import io.interviewcodi.backend.practice.domain.DiscardReason;
+import io.interviewcodi.backend.practice.domain.PracticeStatus;
 import io.interviewcodi.backend.practice.repository.AiRequestRepository;
 import io.interviewcodi.backend.practice.repository.AiRequestRepository.ClaimedRequest;
 import io.interviewcodi.backend.practice.repository.AnswerRepository;
 import io.interviewcodi.backend.practice.repository.AnswerRepository.FeedbackSource;
+import io.interviewcodi.backend.practice.repository.AnswerRepository.RevisionSource;
 import io.interviewcodi.backend.practice.repository.FeedbackRepository;
 import io.interviewcodi.backend.practice.repository.PracticeRepository;
 import io.interviewcodi.backend.practice.repository.PracticeRepository.LockedPractice;
+import io.interviewcodi.backend.practice.repository.QuestionRepository;
+import io.interviewcodi.backend.practice.repository.QuestionRepository.CurrentQuestion;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,13 +40,16 @@ public class AiRequestQueueService {
     private final PracticeRepository practiceRepository;
     private final AnswerRepository answerRepository;
     private final FeedbackRepository feedbackRepository;
+    private final QuestionRepository questionRepository;
 
     AiRequestQueueService(AiRequestRepository aiRequestRepository, PracticeRepository practiceRepository,
-                          AnswerRepository answerRepository, FeedbackRepository feedbackRepository) {
+                          AnswerRepository answerRepository, FeedbackRepository feedbackRepository,
+                          QuestionRepository questionRepository) {
         this.aiRequestRepository = aiRequestRepository;
         this.practiceRepository = practiceRepository;
         this.answerRepository = answerRepository;
         this.feedbackRepository = feedbackRepository;
+        this.questionRepository = questionRepository;
     }
 
     /**
@@ -95,6 +104,57 @@ public class AiRequestQueueService {
                 feedback.suggestion(), feedback.suggestionFocus(), feedback.previousReview(), feedback.generator());
         aiRequestRepository.markSucceeded(request.id());
         return Outcome.SUCCEEDED;
+    }
+
+    @Transactional(readOnly = true)
+    public FollowUpInput loadFollowUpInput(ClaimedRequest request) {
+        RevisionSource source = answerRepository.findRevisionSource(request.answerRevisionId());
+        return new FollowUpInput(source.question(), source.answer(),
+                questionRepository.findContents(source.practiceId()));
+    }
+
+    /**
+     * 생성한 꼬리질문을 연습의 다음 질문으로 넣는다. 그 사이 결과가 무의미해졌으면 버리고 사유를 남긴다.
+     * <ul>
+     * <li>연습이 삭제됨 → PRACTICE_DELETED</li>
+     * <li>연습을 마침 → PRACTICE_COMPLETED (피드백과 달리 마친 연습에 새 질문을 넣지 않는다)</li>
+     * <li>근거 버전이 교정되어 현재 버전이 아님 → SUPERSEDED (교정한 내용으로 다시 요청해야 한다)</li>
+     * <li>근거 질문이 더 이상 현재 질문이 아님(넘기기·다른 꼬리질문) → QUESTION_CHANGED</li>
+     * </ul>
+     */
+    @Transactional
+    public Outcome applyFollowUp(ClaimedRequest request, GeneratedQuestion question) {
+        LockedPractice practice = practiceRepository.lockById(request.practiceId()).orElseThrow();
+        if (!aiRequestRepository.lockIfStillLeased(request.id(), request.leaseToken())) {
+            return Outcome.LEASE_LOST;
+        }
+        DiscardReason reason = followUpDiscardReason(practice, request);
+        if (reason != null) {
+            aiRequestRepository.markDiscarded(request.id(), reason);
+            return Outcome.DISCARDED;
+        }
+        questionRepository.insertFollowUp(request.practiceId(), questionRepository.nextOrderNo(request.practiceId()),
+                question.content(), request.answerRevisionId(), request.id());
+        aiRequestRepository.markSucceeded(request.id());
+        return Outcome.SUCCEEDED;
+    }
+
+    private DiscardReason followUpDiscardReason(LockedPractice practice, ClaimedRequest request) {
+        if (practice.deleted()) {
+            return DiscardReason.PRACTICE_DELETED;
+        }
+        if (practice.status() != PracticeStatus.IN_PROGRESS) {
+            return DiscardReason.PRACTICE_COMPLETED;
+        }
+        if (!answerRepository.isCurrentRevision(request.answerRevisionId())) {
+            return DiscardReason.SUPERSEDED;
+        }
+        long sourceQuestionId = answerRepository.findRevisionSource(request.answerRevisionId()).questionId();
+        CurrentQuestion current = questionRepository.findCurrent(request.practiceId()).orElseThrow();
+        if (current.id() != sourceQuestionId || current.skipped()) {
+            return DiscardReason.QUESTION_CHANGED;
+        }
+        return null;
     }
 
     /**

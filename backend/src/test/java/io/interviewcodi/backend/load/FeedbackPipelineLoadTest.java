@@ -50,7 +50,8 @@ import org.springframework.test.context.DynamicPropertySource;
  * 지연은 DB의 시각으로 계산한다: 큐 대기 = first_claimed_at - created_at, 전체 = finished_at - created_at.
  * 폴링 응답 시간은 같은 JVM의 클라이언트로 쟀으므로 참고값이다(동기 API는 k6로 따로 잰다).
  * <p>
- * 실행: {@code ./gradlew loadTest -Dload.users=30 -Dload.workerConcurrency=2 -Dload.durationSeconds=180}
+ * 실행: {@code ./gradlew loadTest -Dload.users=30 -Dload.workerConcurrency=4 -Dload.durationSeconds=180
+ * -Dload.followUpRate=0.3}
  */
 @Tag("load")
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
@@ -58,10 +59,12 @@ import org.springframework.test.context.DynamicPropertySource;
 class FeedbackPipelineLoadTest {
 
     private static final int USERS = intProperty("load.users", 30);
-    private static final int WORKER_CONCURRENCY = intProperty("load.workerConcurrency", 2);
+    private static final int WORKER_CONCURRENCY = intProperty("load.workerConcurrency", 6);
     private static final Duration DURATION = Duration.ofSeconds(intProperty("load.durationSeconds", 180));
     private static final String DELAY_MIN = System.getProperty("load.aiDelayMin", "3s");
     private static final String DELAY_MAX = System.getProperty("load.aiDelayMax", "8s");
+    /** 피드백을 받은 뒤 꼬리질문을 요청할 확률. 받으면 다음 답변은 그 꼬리질문에 한다. */
+    private static final double FOLLOW_UP_RATE = Double.parseDouble(System.getProperty("load.followUpRate", "0"));
     private static final Duration SUBMIT_INTERVAL = Duration.ofSeconds(60);
     private static final Duration POLL_INTERVAL = Duration.ofMillis(1_500);
     private static final Duration DRAIN_TIMEOUT = Duration.ofMinutes(5);
@@ -83,6 +86,7 @@ class FeedbackPipelineLoadTest {
     private final ConcurrentLinkedQueue<Long> pollMillis = new ConcurrentLinkedQueue<>();
     private final AtomicInteger httpErrors = new AtomicInteger();
     private final AtomicInteger submitted = new AtomicInteger();
+    private final AtomicInteger followUps = new AtomicInteger();
 
     @DynamicPropertySource
     static void loadProperties(DynamicPropertyRegistry registry) {
@@ -116,7 +120,8 @@ class FeedbackPipelineLoadTest {
 
         String report = report(start, backlogSamples);
         System.out.println(report);
-        Path out = Path.of("build/reports/load/feedback-pipeline-c" + WORKER_CONCURRENCY + ".md");
+        Path out = Path.of("build/reports/load/feedback-pipeline-c" + WORKER_CONCURRENCY + "-f"
+                + Math.round(FOLLOW_UP_RATE * 100) + ".md");
         Files.createDirectories(out.getParent());
         Files.writeString(out, report);
 
@@ -140,6 +145,16 @@ class FeedbackPipelineLoadTest {
                 submitted.incrementAndGet();
                 long requestId = extract(attempt.substring(attempt.indexOf("\"feedbackRequest\"")), "id");
                 pollUntilFinished(requestId, cookie);
+                if (ThreadLocalRandom.current().nextDouble() < FOLLOW_UP_RATE) {
+                    long revisionId = extract(attempt.substring(attempt.indexOf("\"currentRevision\"")), "id");
+                    String followUp = send("POST", "/api/practices/" + practiceId + "/follow-up-requests",
+                            "{\"answerRevisionId\":" + revisionId + "}", cookie);
+                    followUps.incrementAndGet();
+                    String finished = pollUntilFinished(extract(followUp, "id"), cookie);
+                    if (finished.contains("\"SUCCEEDED\"")) {
+                        questionId = extract(finished, "questionId");
+                    }
+                }
                 next = next.plus(SUBMIT_INTERVAL);
             }
         } catch (Exception ex) {
@@ -148,17 +163,19 @@ class FeedbackPipelineLoadTest {
         }
     }
 
-    private void pollUntilFinished(long requestId, Cookie cookie) throws Exception {
+    private String pollUntilFinished(long requestId, Cookie cookie) throws Exception {
         Instant giveUp = Instant.now().plus(DRAIN_TIMEOUT);
+        String status = "";
         while (Instant.now().isBefore(giveUp)) {
             long started = System.nanoTime();
-            String status = send("GET", "/api/ai-requests/" + requestId, null, cookie);
+            status = send("GET", "/api/ai-requests/" + requestId, null, cookie);
             pollMillis.add((System.nanoTime() - started) / 1_000_000);
             if (!status.contains("\"PENDING\"") && !status.contains("\"RUNNING\"")) {
-                return;
+                return status;
             }
             Thread.sleep(POLL_INTERVAL);
         }
+        return status;
     }
 
     private String send(String method, String path, String body, Cookie cookie) throws IOException,
@@ -202,17 +219,26 @@ class FeedbackPipelineLoadTest {
     }
 
     private String report(Instant start, List<String> backlogSamples) {
-        Map<String, Object> stats = jdbcClient.sql("""
-                        select count(*) filter (where status = 'SUCCEEDED') as succeeded,
+        List<Map<String, Object>> rows = jdbcClient.sql("""
+                        select kind,
+                               count(*) as total,
+                               count(*) filter (where status = 'SUCCEEDED') as succeeded,
                                count(*) filter (where status = 'FAILED') as failed,
+                               count(*) filter (where status = 'DISCARDED') as discarded,
                                percentile_cont(0.50) within group (order by extract(epoch from first_claimed_at - created_at)) as queue_p50,
                                percentile_cont(0.95) within group (order by extract(epoch from first_claimed_at - created_at)) as queue_p95,
                                percentile_cont(0.99) within group (order by extract(epoch from first_claimed_at - created_at)) as queue_p99,
-                               max(extract(epoch from first_claimed_at - created_at)) as queue_max,
                                percentile_cont(0.50) within group (order by extract(epoch from finished_at - created_at)) as total_p50,
                                percentile_cont(0.95) within group (order by extract(epoch from finished_at - created_at)) as total_p95,
-                               percentile_cont(0.99) within group (order by extract(epoch from finished_at - created_at)) as total_p99,
-                               max(extract(epoch from finished_at - created_at)) as total_max,
+                               percentile_cont(0.99) within group (order by extract(epoch from finished_at - created_at)) as total_p99
+                        from ai_requests
+                        group by kind
+                        order by kind
+                        """)
+                .query()
+                .listOfRows();
+        Map<String, Object> overall = jdbcClient.sql("""
+                        select count(*) filter (where status = 'SUCCEEDED') as succeeded,
                                extract(epoch from max(finished_at) - min(created_at)) as span_seconds
                         from ai_requests
                         """)
@@ -220,32 +246,35 @@ class FeedbackPipelineLoadTest {
                 .singleRow();
         List<Long> polls = new ArrayList<>(pollMillis);
         Collections.sort(polls);
-        double span = num(stats, "span_seconds");
-        long succeeded = ((Number) stats.get("succeeded")).longValue();
-        double arrival = submitted.get() / (double) DURATION.toSeconds();
+        StringBuilder table = new StringBuilder();
+        for (Map<String, Object> row : rows) {
+            table.append("| %s | %s / %s / %s / %s | %.1f / %.1f / %.1f초 | %.1f / %.1f / %.1f초 |%n".formatted(
+                    row.get("kind"), row.get("total"), row.get("succeeded"), row.get("failed"), row.get("discarded"),
+                    num(row, "queue_p50"), num(row, "queue_p95"), num(row, "queue_p99"),
+                    num(row, "total_p50"), num(row, "total_p95"), num(row, "total_p99")));
+        }
+        double span = num(overall, "span_seconds");
+        long succeeded = ((Number) overall.get("succeeded")).longValue();
+        double arrival = (submitted.get() + followUps.get()) / span;
         return """
                 # 피드백 파이프라인 측정 (%s)
 
-                조건: 가상 사용자 %d명, 1인당 %d초에 답변 1건, 측정 %d초 후 큐가 빌 때까지 대기. 워커 동시 처리 %d, 가짜 AI 지연 %s~%s(균등).
+                조건: 가상 사용자 %d명, 1인당 %d초에 답변 1건, 꼬리질문 요청 확률 %.0f%%, 측정 %d초 후 큐가 빌 때까지 대기. 워커 동시 처리 %d, 가짜 AI 지연 %s~%s(균등).
                 환경: 로컬 1대, 서버·워커·부하 클라이언트가 같은 JVM, PostgreSQL 18.6(Testcontainers).
 
-                | 항목 | 값 |
-                | --- | --- |
-                | 제출 | %d건 (도착률 약 %.2f건/초) |
-                | 성공 / 실패 | %d / %s |
-                | 처리량(성공 ÷ 첫 접수~마지막 완료) | %.2f건/초 |
-                | 큐 대기 p50 / p95 / p99 / 최대 | %.1f / %.1f / %.1f / %.1f초 |
-                | 전체 지연 p50 / p95 / p99 / 최대 | %.1f / %.1f / %.1f / %.1f초 |
-                | 폴링 응답 p50 / p95 / p99 (참고) | %d / %d / %d ms (%d건) |
+                제출 %d건, 꼬리질문 요청 %d건. AI 요청 처리량(성공 ÷ 첫 접수~마지막 완료) %.2f건/초, 평균 도착률 %.2f건/초.
+
+                | 종류 | 전체 / 성공 / 실패 / 버림 | 큐 대기 p50 / p95 / p99 | 전체 지연 p50 / p95 / p99 |
+                | --- | --- | --- | --- |
+                %s
+                폴링 응답 p50 / p95 / p99 (참고): %d / %d / %d ms (%d건)
 
                 대기열 표본(15초마다):
                 %s
-                """.formatted(start, USERS, SUBMIT_INTERVAL.toSeconds(), DURATION.toSeconds(), WORKER_CONCURRENCY,
-                DELAY_MIN, DELAY_MAX, submitted.get(), arrival, succeeded, stats.get("failed"), succeeded / span,
-                num(stats, "queue_p50"), num(stats, "queue_p95"), num(stats, "queue_p99"), num(stats, "queue_max"),
-                num(stats, "total_p50"), num(stats, "total_p95"), num(stats, "total_p99"), num(stats, "total_max"),
-                percentile(polls, 0.50), percentile(polls, 0.95), percentile(polls, 0.99), polls.size(),
-                String.join("\n", backlogSamples.stream().map(sample -> "- " + sample).toList()));
+                """.formatted(start, USERS, SUBMIT_INTERVAL.toSeconds(), FOLLOW_UP_RATE * 100, DURATION.toSeconds(),
+                WORKER_CONCURRENCY, DELAY_MIN, DELAY_MAX, submitted.get(), followUps.get(), succeeded / span,
+                arrival, table, percentile(polls, 0.50), percentile(polls, 0.95), percentile(polls, 0.99),
+                polls.size(), String.join("\n", backlogSamples.stream().map(sample -> "- " + sample).toList()));
     }
 
     private static double num(Map<String, Object> stats, String key) {
