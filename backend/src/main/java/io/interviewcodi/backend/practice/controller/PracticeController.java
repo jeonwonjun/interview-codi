@@ -33,19 +33,19 @@ class PracticeController {
     }
 
     @GetMapping
-    PracticeListResponse list(LoginUser loginUser) {
-        return practiceService.list(loginUser.userId());
+    ResponseEntity<PracticeListResponse> list(LoginUser loginUser) {
+        return ResponseEntity.ok(practiceService.list(loginUser.userId()));
     }
 
     @GetMapping("/{practiceId}")
-    PracticeResponse get(LoginUser loginUser, @PathVariable long practiceId) {
-        return practiceService.get(loginUser.userId(), practiceId);
+    ResponseEntity<PracticeResponse> get(LoginUser loginUser, @PathVariable long practiceId) {
+        return ResponseEntity.ok(practiceService.get(loginUser.userId(), practiceId));
     }
 
     @PostMapping("/{practiceId}/complete")
-    PracticeResponse complete(LoginUser loginUser, @PathVariable long practiceId) {
+    ResponseEntity<PracticeResponse> complete(LoginUser loginUser, @PathVariable long practiceId) {
         practiceService.complete(loginUser.userId(), practiceId);
-        return practiceService.get(loginUser.userId(), practiceId);
+        return ResponseEntity.ok(practiceService.get(loginUser.userId(), practiceId));
     }
 
     @DeleteMapping("/{practiceId}")

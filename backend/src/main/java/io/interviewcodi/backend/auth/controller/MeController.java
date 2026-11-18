@@ -2,6 +2,7 @@ package io.interviewcodi.backend.auth.controller;
 
 import io.interviewcodi.backend.auth.domain.LoginUser;
 import io.interviewcodi.backend.auth.dto.MeResponse;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -14,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 class MeController {
 
     @GetMapping
-    MeResponse me(LoginUser loginUser) {
-        return new MeResponse(loginUser.userId());
+    ResponseEntity<MeResponse> me(LoginUser loginUser) {
+        return ResponseEntity.ok(new MeResponse(loginUser.userId()));
     }
 }
