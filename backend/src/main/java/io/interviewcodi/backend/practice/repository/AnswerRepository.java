@@ -156,6 +156,22 @@ public class AnswerRepository {
                 .single();
     }
 
+    /** 본인의 삭제되지 않은 연습에 속한 답변 시도면 그 연습 ID. */
+    public Optional<Long> findPracticeIdForOwnerByAnswer(long answerId, long userId) {
+        return jdbcClient.sql("""
+                        select p.id
+                        from answers a
+                        join questions q on q.id = a.question_id and q.deleted_at is null
+                        join practices p on p.id = q.practice_id
+                        where a.id = :answerId and a.deleted_at is null
+                          and p.user_id = :userId and p.deleted_at is null
+                        """)
+                .param("answerId", answerId)
+                .param("userId", userId)
+                .query(Long.class)
+                .optional();
+    }
+
     public record AttemptRow(long id, long questionId, int attemptNo, long revisionId, int revisionNo, String content) {
     }
 
