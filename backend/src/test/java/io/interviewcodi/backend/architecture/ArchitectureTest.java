@@ -70,7 +70,7 @@ class ArchitectureTest {
             .should().haveSimpleNameEndingWith("Request")
             .orShould().haveSimpleNameEndingWith("Response");
 
-    // 계층: 도메인 패키지 아래 controller → service → repository. domain·dto는 어느 계층에서나 쓴다.
+    // 계층: 도메인 패키지 아래 controller·worker → service → repository. domain·dto는 어느 계층에서나 쓴다.
 
     @ArchTest
     static final ArchRule CONTROLLERS_RESIDE_IN_CONTROLLER_PACKAGE = classes()
@@ -93,8 +93,10 @@ class ArchitectureTest {
             .layer("Controller").definedBy("..controller")
             .layer("Service").definedBy("..service")
             .layer("Repository").definedBy("..repository")
+            .layer("Worker").definedBy("..worker")
             .whereLayer("Controller").mayNotBeAccessedByAnyLayer()
-            .whereLayer("Service").mayOnlyBeAccessedByLayers("Controller", "Service")
+            .whereLayer("Worker").mayNotBeAccessedByAnyLayer()
+            .whereLayer("Service").mayOnlyBeAccessedByLayers("Controller", "Service", "Worker")
             .whereLayer("Repository").mayOnlyBeAccessedByLayers("Service");
 
     @ArchTest

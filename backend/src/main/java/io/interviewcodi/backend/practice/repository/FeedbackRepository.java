@@ -26,6 +26,26 @@ public class FeedbackRepository {
                 .list();
     }
 
+    public long insert(long aiRequestId, long answerRevisionId, String observation, String suggestion,
+                       String suggestionFocus, String previousReview, String generator) {
+        return jdbcClient.sql("""
+                        insert into feedback (ai_request_id, answer_revision_id, observation, suggestion,
+                                              suggestion_focus, previous_review, generator)
+                        values (:aiRequestId, :answerRevisionId, :observation, :suggestion,
+                                :suggestionFocus, :previousReview, :generator)
+                        returning id
+                        """)
+                .param("aiRequestId", aiRequestId)
+                .param("answerRevisionId", answerRevisionId)
+                .param("observation", observation)
+                .param("suggestion", suggestion)
+                .param("suggestionFocus", suggestionFocus)
+                .param("previousReview", previousReview)
+                .param("generator", generator)
+                .query(Long.class)
+                .single();
+    }
+
     public record FeedbackRow(long id, long answerRevisionId, String observation, String suggestion,
                        String suggestionFocus, String previousReview) {
     }

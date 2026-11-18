@@ -97,6 +97,68 @@ public class AnswerRepository {
                 .optional();
     }
 
+    /** 삭제되지 않았고, 같은 시도에 더 큰 버전이 없으면 현재 버전이다. */
+    public boolean isCurrentRevision(long revisionId) {
+        return jdbcClient.sql("""
+                        select count(*)
+                        from answer_revisions r
+                        join answers a on a.id = r.answer_id and a.deleted_at is null
+                        where r.id = :revisionId and r.deleted_at is null
+                          and not exists (
+                              select 1 from answer_revisions newer
+                              where newer.answer_id = r.answer_id and newer.revision_no > r.revision_no
+                                and newer.deleted_at is null)
+                        """)
+                .param("revisionId", revisionId)
+                .query(Integer.class)
+                .single() == 1;
+    }
+
+    /** 본인의 삭제되지 않은 연습에 속한 버전이면 그 연습 ID. */
+    public Optional<Long> findPracticeIdForOwner(long revisionId, long userId) {
+        return jdbcClient.sql("""
+                        select p.id
+                        from answer_revisions r
+                        join answers a on a.id = r.answer_id and a.deleted_at is null
+                        join questions q on q.id = a.question_id and q.deleted_at is null
+                        join practices p on p.id = q.practice_id
+                        where r.id = :revisionId and r.deleted_at is null
+                          and p.user_id = :userId and p.deleted_at is null
+                        """)
+                .param("revisionId", revisionId)
+                .param("userId", userId)
+                .query(Long.class)
+                .optional();
+    }
+
+    /**
+     * 피드백 생성 입력: 질문 문구, 이 버전의 본문, 그리고 재답변이면 직전 시도의 현재 버전 피드백이 제안한 개선점.
+     */
+    public FeedbackSource findFeedbackSource(long revisionId) {
+        return jdbcClient.sql("""
+                        select q.content as question, r.content as answer,
+                               (select f.suggestion
+                                from answers prev
+                                join lateral (
+                                    select pr.id from answer_revisions pr
+                                    where pr.answer_id = prev.id and pr.deleted_at is null
+                                    order by pr.revision_no desc limit 1) prev_rev on true
+                                join feedback f on f.answer_revision_id = prev_rev.id and f.deleted_at is null
+                                where prev.question_id = a.question_id and prev.attempt_no = a.attempt_no - 1
+                                  and prev.deleted_at is null) as previous_suggestion
+                        from answer_revisions r
+                        join answers a on a.id = r.answer_id
+                        join questions q on q.id = a.question_id
+                        where r.id = :revisionId
+                        """)
+                .param("revisionId", revisionId)
+                .query(FeedbackSource.class)
+                .single();
+    }
+
     public record AttemptRow(long id, long questionId, int attemptNo, long revisionId, int revisionNo, String content) {
+    }
+
+    public record FeedbackSource(String question, String answer, String previousSuggestion) {
     }
 }

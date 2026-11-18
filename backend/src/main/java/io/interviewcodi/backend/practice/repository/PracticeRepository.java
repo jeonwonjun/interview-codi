@@ -92,11 +92,27 @@ public class PracticeRepository {
                 .update();
     }
 
+    /** 워커가 결과를 반영할 때 연습 행을 잠근다. 사용자 요청과 같은 잠금 순서(연습 → 요청)를 지킨다. */
+    public Optional<LockedPractice> lockById(long practiceId) {
+        return jdbcClient.sql("""
+                        select status, deleted_at is not null as deleted
+                        from practices
+                        where id = :practiceId
+                        for update
+                        """)
+                .param("practiceId", practiceId)
+                .query(LockedPractice.class)
+                .optional();
+    }
+
     public record PracticeRow(long id, StartMode startMode, PracticeStatus status, OffsetDateTime createdAt,
                        OffsetDateTime completedAt) {
     }
 
     public record PracticeSummaryRow(long id, StartMode startMode, PracticeStatus status, OffsetDateTime createdAt,
                               OffsetDateTime completedAt, int questionCount) {
+    }
+
+    public record LockedPractice(PracticeStatus status, boolean deleted) {
     }
 }
