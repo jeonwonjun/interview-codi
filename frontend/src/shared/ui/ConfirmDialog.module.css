@@ -38,6 +38,29 @@
   margin-top: var(--space-sm);
 }
 
+/* 나갈 때는 눌림·클릭을 받지 않는다. */
+.leaving {
+  pointer-events: none;
+  animation: fadeOut 150ms var(--ease-in) both;
+}
+
+.leaving .box {
+  animation: popOut 150ms var(--ease-in) both;
+}
+
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes popOut {
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
 @keyframes fade {
   from {
     opacity: 0;
@@ -54,5 +77,9 @@
 @media (prefers-reduced-motion: reduce) {
   .box {
     animation-name: fade;
+  }
+
+  .leaving .box {
+    animation-name: fadeOut;
   }
 }

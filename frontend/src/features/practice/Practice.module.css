@@ -67,6 +67,23 @@
   font-weight: 600;
 }
 
+/* knoted.kr 카드 강조처럼 노란색이 천천히(800ms) 스며든다. Reveal과 같은 시각에 시작한다. */
+.tipArrive {
+  animation: warm var(--duration-slow) ease both;
+}
+
+@keyframes warm {
+  from {
+    background: var(--color-canvas-soft);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tipArrive {
+    animation: none;
+  }
+}
+
 .tipLabel {
   font-size: 13px;
   font-weight: 500;
@@ -94,6 +111,49 @@
   display: flex;
   justify-content: flex-end;
   gap: var(--space-xs);
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: 24px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.summary::-webkit-details-marker {
+  display: none;
+}
+
+.chevron {
+  display: inline-block;
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+details[open] .chevron {
+  transform: rotate(90deg);
+}
+
+details[open] .previous {
+  animation: unfold var(--duration-base) var(--ease-out) both;
+}
+
+@keyframes unfold {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chevron {
+    transition: none;
+  }
+
+  details[open] .previous {
+    animation: none;
+  }
 }
 
 .previous {

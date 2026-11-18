@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
@@ -34,8 +34,9 @@ describe('ConfirmDialog', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: '취소' }))
 
     await userEvent.keyboard('{Escape}')
-    expect(screen.queryByRole('dialog')).toBeNull()
     expect(document.activeElement).toBe(opener)
+    // 나가는 움직임(150ms) 뒤에 사라진다.
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
 
   it('Tab은 대화상자 안에서만 돈다', async () => {

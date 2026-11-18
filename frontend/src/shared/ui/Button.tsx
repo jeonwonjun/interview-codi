@@ -1,6 +1,6 @@
 import type { ComponentProps } from 'react'
 import styles from './Button.module.css'
-import { PulseDot } from './PulseDot'
+import { PulseDots } from './PulseDot'
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger'
 type Size = 'md' | 'sm'
@@ -35,7 +35,7 @@ export function Button({
       <span className={styles.label}>{children}</span>
       {loading && (
         <span className={styles.spinner}>
-          <PulseDot />
+          <PulseDots />
         </span>
       )}
     </button>

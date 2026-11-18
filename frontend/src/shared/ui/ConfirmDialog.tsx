@@ -1,6 +1,8 @@
-import { type ReactNode, useEffect, useId, useRef } from 'react'
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react'
 import { Button } from './Button'
 import styles from './ConfirmDialog.module.css'
+
+const LEAVE_MS = 150
 
 type Props = {
   open: boolean
@@ -18,6 +20,7 @@ type Props = {
 /**
  * 확인 대화상자. 열리면 취소 버튼에 포커스를 두고(실수로 Enter를 눌러도 지우지 않도록), Tab은 대화상자 안에서만 돈다.
  * Esc·바깥 클릭은 취소이고, 닫히면 연 요소로 포커스를 돌려준다.
+ * DesignByWani 팝업: 배경이 어두워지며 창이 커지며(ease-out) 들어오고, 더 짧게(ease-in) 나간다.
  */
 export function ConfirmDialog({
   open,
@@ -30,6 +33,26 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: Props) {
+  // 닫힐 때 바로 없애지 않고 나가는 움직임(150ms)을 보여 준 뒤 없앤다.
+  const [rendered, setRendered] = useState(open)
+  const [leaving, setLeaving] = useState(false)
+  if (open && (!rendered || leaving)) {
+    setRendered(true)
+    setLeaving(false)
+  } else if (!open && rendered && !leaving) {
+    setLeaving(true)
+  }
+  useEffect(() => {
+    if (!leaving) {
+      return
+    }
+    const timer = window.setTimeout(() => {
+      setRendered(false)
+      setLeaving(false)
+    }, LEAVE_MS)
+    return () => window.clearTimeout(timer)
+  }, [leaving])
+
   const titleId = useId()
   const descriptionId = useId()
   const boxRef = useRef<HTMLDivElement>(null)
@@ -44,11 +67,14 @@ export function ConfirmDialog({
     return () => opener?.focus()
   }, [open])
 
-  if (!open) {
+  if (!rendered) {
     return null
   }
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (leaving) {
+      return
+    }
     if (event.key === 'Escape') {
       event.stopPropagation()
       if (!busy) {
@@ -76,8 +102,8 @@ export function ConfirmDialog({
 
   return (
     <div
-      className={styles.backdrop}
-      onMouseDown={(event) => event.target === event.currentTarget && !busy && onCancel()}
+      className={[styles.backdrop, leaving && styles.leaving].filter(Boolean).join(' ')}
+      onMouseDown={(event) => event.target === event.currentTarget && !busy && !leaving && onCancel()}
       onKeyDown={handleKeyDown}
     >
       <div

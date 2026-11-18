@@ -5,6 +5,9 @@ import { TextArea } from '../../shared/ui/TextArea'
 import styles from './Practice.module.css'
 
 const MAX_LENGTH = 3_000
+// 말하는 속도 약 분당 300~500자. 안내일 뿐 막지 않는다.
+const ONE_MINUTE_MIN = 300
+const ONE_MINUTE_MAX = 500
 
 type Props = {
   initialValue?: string
@@ -18,6 +21,7 @@ type Props = {
 export function AnswerForm({ initialValue = '', submitLabel, busy, onSubmit, onCancel }: Props) {
   const [content, setContent] = useState(initialValue)
   const length = [...content.trim()].length
+  const inOneMinute = length >= ONE_MINUTE_MIN && length <= ONE_MINUTE_MAX
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -36,7 +40,8 @@ export function AnswerForm({ initialValue = '', submitLabel, busy, onSubmit, onC
           value={content}
           maxLength={MAX_LENGTH}
           placeholder="말하듯이 적어 보세요. 1분 정도면 300~500자예요."
-          hint={`${length}자 · 약 1분 분량은 300~500자`}
+          hint={lengthHint(length)}
+          hintTone={inOneMinute ? 'positive' : 'default'}
           onChange={(event) => setContent(event.target.value)}
         />
         <div className={styles.formActions}>
@@ -52,4 +57,17 @@ export function AnswerForm({ initialValue = '', submitLabel, busy, onSubmit, onC
       </form>
     </Card>
   )
+}
+
+function lengthHint(length: number): string {
+  if (length === 0) {
+    return '1분 정도면 300~500자예요'
+  }
+  if (length < ONE_MINUTE_MIN) {
+    return `${length}자 · 1분 분량은 300~500자`
+  }
+  if (length <= ONE_MINUTE_MAX) {
+    return `${length}자 · 1분 분량이에요`
+  }
+  return `${length}자 · 1분보다 조금 길어요`
 }

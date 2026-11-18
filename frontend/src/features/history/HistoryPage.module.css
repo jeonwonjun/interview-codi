@@ -27,6 +27,31 @@
   padding: var(--space-sm) var(--space-sm) var(--space-sm) var(--space-xl);
   border-radius: var(--rounded-xl);
   background: var(--color-canvas);
+  transition: box-shadow var(--duration-base) var(--ease-out);
+}
+
+.item:hover {
+  box-shadow: var(--shadow-float);
+}
+
+.chevron {
+  color: var(--color-mute);
+  font-size: 18px;
+  line-height: 1;
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+/* 누르면 상세로 간다는 것을 화살표가 살짝 앞으로 나가며 알려 준다. */
+.link:hover .chevron,
+.link:focus-visible .chevron {
+  transform: translateX(3px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item,
+  .chevron {
+    transition: none;
+  }
 }
 
 .link {

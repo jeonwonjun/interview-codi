@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react'
 
-export type ToastTone = 'info' | 'error'
+/** success는 끝난 일(삭제 등)을 체크 표시와 함께 알린다. */
+export type ToastTone = 'info' | 'success' | 'error'
 
 export type ShowToast = (message: string, tone?: ToastTone) => void
 

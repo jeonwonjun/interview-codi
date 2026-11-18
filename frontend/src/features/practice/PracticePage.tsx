@@ -145,7 +145,11 @@ function InProgressView({ practice, reload }: { practice: Practice; reload: () =
         <div className={styles.badgeRow}>
           <Badge>질문 {current.orderNo}</Badge>
           {current.sourceKind === 'FOLLOW_UP' && <Badge tone="neutral">내 답변에서 이어진 질문</Badge>}
-          {latest && <Badge tone="neutral">{latest.attemptNo}번째 답변</Badge>}
+          {latest && (
+            <Badge key={latest.attemptNo} tone="neutral" pop>
+              {latest.attemptNo}번째 답변
+            </Badge>
+          )}
         </div>
         <h1 className={styles.question}>{current.content}</h1>
       </Card>
@@ -229,7 +233,12 @@ function InProgressView({ practice, reload }: { practice: Practice; reload: () =
 function PreviousQuestions({ questions }: { questions: Question[] }) {
   return (
     <details className={styles.previousCard}>
-      <summary className={styles.label}>지난 질문 {questions.length}개</summary>
+      <summary className={`${styles.label} ${styles.summary}`}>
+        <span className={styles.chevron} aria-hidden="true">
+          ›
+        </span>
+        지난 질문 {questions.length}개
+      </summary>
       <ol className={styles.previous}>
         {questions.map((question) => (
           <li key={question.id} className={styles.previousItem}>

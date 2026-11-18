@@ -4,3 +4,26 @@
   gap: var(--space-md);
   color: var(--color-body);
 }
+
+.dots {
+  display: inline-flex;
+  color: var(--color-primary-ink);
+}
+
+/* "오래 걸리고 있어요"처럼 문구가 바뀌면 부드럽게 바꿔 끼운다. */
+.message {
+  animation: swap var(--duration-base) var(--ease-out) both;
+}
+
+@keyframes swap {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .message {
+    animation: none;
+  }
+}

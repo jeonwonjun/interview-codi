@@ -9,6 +9,7 @@ type Toast = { id: number; message: string; tone: ToastTone; leaving: boolean }
 
 /**
  * 화면 아래쪽 가운데에 알림을 하나씩 띄운다. 새 알림이 오면 이전 알림을 바로 바꾼다.
+ * DesignByWani 스낵바: 아래에서 올라오며(ease-out) 들어오고, 내려가며(ease-in) 나간다.
  * info는 role="status"(기다렸다 읽음), error는 role="alert"(바로 읽음)로 화면 읽기 프로그램에 알린다.
  */
 export function ToastProvider({ children }: { children: ReactNode }) {
@@ -40,6 +41,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             className={[styles.toast, styles[toast.tone], toast.leaving && styles.leaving].filter(Boolean).join(' ')}
             role={toast.tone === 'error' ? 'alert' : 'status'}
           >
+            {toast.tone === 'success' && (
+              <svg className={styles.check} viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                <path d="m5 12.5 4.5 4.5L19 7.5" pathLength={1} />
+              </svg>
+            )}
             {toast.message}
           </div>
         )}

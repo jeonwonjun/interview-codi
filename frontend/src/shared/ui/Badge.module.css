@@ -18,3 +18,21 @@
   background: var(--color-canvas-strong);
   color: var(--color-mute);
 }
+
+/* DesignByWani "좋아요": 크기 + 살짝 넘쳤다 돌아오는 곡선으로 톡. */
+.pop {
+  animation: pop 400ms var(--ease-spring) both;
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pop {
+    animation: none;
+  }
+}

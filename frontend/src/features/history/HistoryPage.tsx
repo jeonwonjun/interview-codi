@@ -14,7 +14,9 @@ import styles from './HistoryPage.module.css'
 export function HistoryPage() {
   const [items, setItems] = useState<PracticeSummary[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // 닫히는 움직임 동안에도 안내 문구가 남도록 대상과 열림을 따로 둔다.
   const [target, setTarget] = useState<PracticeSummary | null>(null)
+  const [confirming, setConfirming] = useState(false)
   const [removing, setRemoving] = useState(false)
   const toast = useToast()
 
@@ -34,11 +36,11 @@ export function HistoryPage() {
     setRemoving(true)
     try {
       await practiceApi.remove(item.id)
-      setTarget(null)
-      toast('연습 기록을 삭제했어요.')
+      setConfirming(false)
+      toast('연습 기록을 삭제했어요.', 'success')
       await load()
     } catch {
-      setTarget(null)
+      setConfirming(false)
       toast('삭제하지 못했어요. 잠시 후 다시 시도해 주세요.', 'error')
     } finally {
       setRemoving(false)
@@ -68,22 +70,28 @@ export function HistoryPage() {
               <span className={styles.meta}>
                 <Badge tone={item.canProceed ? 'primary' : 'neutral'}>{item.canProceed ? '이어하기' : '마침'}</Badge>
                 질문 {item.questionCount}개
+                <span className={styles.chevron} aria-hidden="true">
+                  ›
+                </span>
               </span>
             </Link>
-            <Button variant="ghost" size="sm" onClick={() => setTarget(item)} aria-label={`${formatDateTime(item.createdAt)} 연습 삭제`}>
+            <Button variant="ghost" size="sm" onClick={() => {
+                setTarget(item)
+                setConfirming(true)
+              }} aria-label={`${formatDateTime(item.createdAt)} 연습 삭제`}>
               삭제
             </Button>
           </li>
         ))}
       </ul>
       <ConfirmDialog
-        open={target != null}
+        open={confirming}
         title="연습 기록을 삭제할까요?"
         confirmLabel="삭제"
         tone="danger"
         busy={removing}
         onConfirm={() => target && void remove(target)}
-        onCancel={() => setTarget(null)}
+        onCancel={() => setConfirming(false)}
       >
         {target && `${formatDateTime(target.createdAt)} 연습의 질문·답변·피드백을 다시 볼 수 없어요.`}
       </ConfirmDialog>

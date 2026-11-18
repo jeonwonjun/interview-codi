@@ -1,6 +1,10 @@
 .reveal {
   animation: appear var(--duration-enter) var(--ease-out) both;
-  animation-delay: calc(200ms + var(--reveal-index, 0) * var(--stagger));
+}
+
+.phrase {
+  display: inline;
+  animation: phrase 400ms var(--ease-out) both;
 }
 
 @keyframes appear {
@@ -15,10 +19,24 @@
   }
 }
 
+/* 인라인 글은 이동하면 줄이 흔들리므로 투명도와 약한 흐림만 쓴다. */
+@keyframes phrase {
+  from {
+    opacity: 0;
+    filter: blur(2px);
+  }
+
+  to {
+    opacity: 1;
+    filter: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .reveal {
+  .reveal,
+  .phrase {
     animation: fade 150ms linear both;
-    animation-delay: 0ms;
+    animation-delay: 0ms !important;
   }
 
   @keyframes fade {

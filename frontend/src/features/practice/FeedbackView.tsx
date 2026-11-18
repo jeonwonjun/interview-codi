@@ -1,10 +1,13 @@
 import { Button } from '../../shared/ui/Button'
 import { Card } from '../../shared/ui/Card'
 import { Pending } from '../../shared/ui/Pending'
-import { Reveal } from '../../shared/ui/Reveal'
+import { Reveal, RevealText } from '../../shared/ui/Reveal'
+import { revealTextDuration } from '../../shared/ui/revealText'
 import { FOCUS_LABEL } from './labels'
 import { type AnswerAttempt, isActive } from './practiceApi'
 import styles from './Practice.module.css'
+
+const STAGGER_MS = 80
 
 type Props = {
   attempt: AnswerAttempt
@@ -18,40 +21,46 @@ type Props = {
 /**
  * 답변 시도의 현재 버전에 대한 피드백 영역. 교정 전 버전의 피드백은 서버가 넣지 않으므로 여기서도 보이지 않는다.
  * 피드백에는 빨간색·점수를 쓰지 않고, 바꿔 볼 한 가지만 노란 카드로 보여 준다(DESIGN.md).
- * 도착할 때는 카드가 먼저, 관찰 → 지난번 개선점 → 바꿔 볼 한 가지 순서로 나타난다.
+ * 도착할 때는 카드가 먼저 나타나고, 관찰·지난번 개선점은 말하듯 몇 어절씩 이어지고, 바꿔 볼 한 가지는 마지막에 노란색이 스며든다.
  */
 export function FeedbackView({ attempt, slow = false, onRetry, busy = false, animate = false }: Props) {
   const { feedback, feedbackRequest } = attempt
   if (feedback) {
-    const Step = animate ? Reveal : Plain
-    let index = 0
+    // 카드(0ms) → 관찰을 몇 어절씩 → 지난번 개선점 → 바꿔 볼 한 가지. 앞 내용이 다 나타난 뒤 다음이 시작한다.
+    const observationAt = 200
+    const previousAt = observationAt + revealTextDuration(feedback.observation) + STAGGER_MS
+    const tipAt =
+      (feedback.previousReview ? previousAt + revealTextDuration(feedback.previousReview) : previousAt) + STAGGER_MS
     return (
       <Card reveal={animate} aria-label="피드백">
         <span className={styles.label}>피드백</span>
-        <Step index={index++}>
-          <p className={styles.observation}>{feedback.observation}</p>
-        </Step>
+        <p className={styles.observation}>
+          {animate ? <RevealText text={feedback.observation} delay={observationAt} /> : feedback.observation}
+        </p>
         {feedback.previousReview && (
-          <Step index={index++}>
-            <p className={styles.observation}>
-              <strong>지난번 개선점: </strong>
-              {feedback.previousReview}
-            </p>
-          </Step>
+          <p className={styles.observation}>
+            <strong>지난번 개선점: </strong>
+            {animate ? <RevealText text={feedback.previousReview} delay={previousAt} /> : feedback.previousReview}
+          </p>
         )}
-        <Step index={index}>
-          {feedback.suggestion ? (
-            <div className={styles.tip}>
+        {feedback.suggestion ? (
+          <Step animate={animate} delay={tipAt}>
+            <div
+              className={[styles.tip, animate && styles.tipArrive].filter(Boolean).join(' ')}
+              style={animate ? { animationDelay: `${tipAt}ms` } : undefined}
+            >
               <span className={styles.tipLabel}>
                 다음에 바꿔 볼 한 가지
                 {feedback.suggestionFocus && ` · ${FOCUS_LABEL[feedback.suggestionFocus]}`}
               </span>
               <span>{feedback.suggestion}</span>
             </div>
-          ) : (
+          </Step>
+        ) : (
+          <Step animate={animate} delay={tipAt}>
             <p className={styles.caption}>이번 답변은 지금처럼 말해도 충분해요. 다음 질문으로 넘어가 보세요.</p>
-          )}
-        </Step>
+          </Step>
+        )}
       </Card>
     )
   }
@@ -76,6 +85,6 @@ export function FeedbackView({ attempt, slow = false, onRetry, busy = false, ani
   )
 }
 
-function Plain({ children }: { index?: number; children: React.ReactNode }) {
-  return <>{children}</>
+function Step({ animate, delay, children }: { animate: boolean; delay: number; children: React.ReactNode }) {
+  return animate ? <Reveal delay={delay}>{children}</Reveal> : <>{children}</>
 }
