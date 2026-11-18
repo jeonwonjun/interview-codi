@@ -65,3 +65,21 @@
     padding: 20px;
   }
 }
+
+.resumeList {
+  display: grid;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.resumeLink {
+  display: block;
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--rounded-lg);
+  background: var(--color-primary-pale);
+  color: var(--color-primary-ink);
+  font-weight: 600;
+  text-decoration: none;
+}

@@ -12,8 +12,16 @@
   display: flex;
   align-items: center;
   gap: var(--space-sm);
+  color: var(--color-ink);
   font-size: 17px;
   font-weight: 700;
+  text-decoration: none;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
 }
 
 .logo {
@@ -25,4 +33,19 @@
   max-width: var(--page-max-width);
   margin: 0 auto;
   padding: 0 var(--space-lg) var(--space-4xl);
+}
+
+.navLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: var(--rounded-full);
+  color: var(--color-body);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.navLink:hover {
+  background: var(--color-canvas-strong);
 }
