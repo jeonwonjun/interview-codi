@@ -59,7 +59,7 @@ import org.springframework.test.context.DynamicPropertySource;
 class FeedbackPipelineLoadTest {
 
     private static final int USERS = intProperty("load.users", 30);
-    private static final int WORKER_CONCURRENCY = intProperty("load.workerConcurrency", 6);
+    private static final int WORKER_CONCURRENCY = intProperty("load.workerConcurrency", 10);
     private static final Duration DURATION = Duration.ofSeconds(intProperty("load.durationSeconds", 180));
     private static final String DELAY_MIN = System.getProperty("load.aiDelayMin", "3s");
     private static final String DELAY_MAX = System.getProperty("load.aiDelayMax", "8s");
@@ -90,6 +90,8 @@ class FeedbackPipelineLoadTest {
 
     @DynamicPropertySource
     static void loadProperties(DynamicPropertyRegistry registry) {
+        // 부하 측정은 비용이 들지 않도록 항상 가짜 생성기로 돌린다(.env의 AI_PROVIDER를 덮어쓴다).
+        registry.add("practice.ai.provider", () -> "fake");
         registry.add("practice.ai.worker.enabled", () -> "true");
         registry.add("practice.ai.worker.concurrency", () -> WORKER_CONCURRENCY);
         registry.add("practice.ai.fake.delay-min", () -> DELAY_MIN);

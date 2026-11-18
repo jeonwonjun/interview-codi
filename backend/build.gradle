@@ -35,7 +35,7 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform {
-		excludeTags 'load'
+		excludeTags 'load', 'eval'
 	}
 }
 
@@ -49,6 +49,24 @@ tasks.register('loadTest', Test) {
 		includeTags 'load'
 	}
 	systemProperties System.properties.findAll { it.key.toString().startsWith('load.') }
+	outputs.upToDateWhen { false }
+	testLogging {
+		showStandardStreams = true
+	}
+}
+
+// AI 생성 품질·지연·토큰 평가. 실제 API를 호출하므로 따로 실행한다.
+// ./gradlew aiEval -Deval.models=gemini-3.8-flash,gemini-3.1-flash-lite            (계획만 출력)
+// ./gradlew aiEval -Deval.models=... -Deval.execute=true                           (실제 호출)
+tasks.register('aiEval', Test) {
+	description = 'Runs AI generation evaluations tagged with "eval".'
+	group = 'verification'
+	testClassesDirs = sourceSets.test.output.classesDirs
+	classpath = sourceSets.test.runtimeClasspath
+	useJUnitPlatform {
+		includeTags 'eval'
+	}
+	systemProperties System.properties.findAll { it.key.toString().startsWith('eval.') }
 	outputs.upToDateWhen { false }
 	testLogging {
 		showStandardStreams = true

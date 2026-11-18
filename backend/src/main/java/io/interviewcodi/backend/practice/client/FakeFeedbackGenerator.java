@@ -1,5 +1,6 @@
 package io.interviewcodi.backend.practice.client;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
@@ -8,6 +9,7 @@ import org.springframework.stereotype.Component;
  * 부하 측정에서는 {@link FakeLatency}로 응답 시간을 흉내 낸다.
  */
 @Component
+@ConditionalOnProperty(name = "practice.ai.provider", havingValue = "fake", matchIfMissing = true)
 class FakeFeedbackGenerator implements FeedbackGenerator {
 
     static final String NAME = "fake-v1";
