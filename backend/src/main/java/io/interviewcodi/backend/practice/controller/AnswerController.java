@@ -3,6 +3,7 @@ package io.interviewcodi.backend.practice.controller;
 import io.interviewcodi.backend.auth.domain.LoginUser;
 import io.interviewcodi.backend.practice.dto.AiRequestResponse;
 import io.interviewcodi.backend.practice.dto.AnswerAttemptResponse;
+import io.interviewcodi.backend.practice.dto.ReviseAnswerRequest;
 import io.interviewcodi.backend.practice.dto.SubmitAnswerRequest;
 import io.interviewcodi.backend.practice.service.AnswerService;
 import io.interviewcodi.backend.practice.service.AnswerService.FeedbackRequestResult;
@@ -28,6 +29,15 @@ class AnswerController {
     ResponseEntity<AnswerAttemptResponse> submit(LoginUser loginUser, @PathVariable long questionId,
                                                  @RequestBody SubmitAnswerRequest request) {
         SubmitResult result = answerService.submit(loginUser.userId(), questionId, request.clientRequestId(),
+                request.content());
+        return ResponseEntity.status(result.created() ? HttpStatus.CREATED : HttpStatus.OK).body(result.attempt());
+    }
+
+    /** 문구 교정. 새 버전을 저장하면 201, 본문이 현재 버전과 같으면 그대로 200. 먼저 저장된 교정이 있으면 409. */
+    @PostMapping("/api/answers/{answerId}/revisions")
+    ResponseEntity<AnswerAttemptResponse> revise(LoginUser loginUser, @PathVariable long answerId,
+                                                 @RequestBody ReviseAnswerRequest request) {
+        SubmitResult result = answerService.revise(loginUser.userId(), answerId, request.baseRevisionNo(),
                 request.content());
         return ResponseEntity.status(result.created() ? HttpStatus.CREATED : HttpStatus.OK).body(result.attempt());
     }

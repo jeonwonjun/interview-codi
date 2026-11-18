@@ -19,6 +19,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -74,6 +75,47 @@ public class AnswerService {
         int attemptNo = answerRepository.nextAttemptNo(questionId);
         long answerId = answerRepository.insertAnswer(questionId, attemptNo, clientRequestId);
         long revisionId = answerRepository.insertRevision(answerId, 1, normalized);
+        aiRequestRepository.insertPending(practiceId, AiRequestKind.FEEDBACK, revisionId);
+        return new SubmitResult(load(practiceId, answerId), true);
+    }
+
+    /**
+     * 같은 답변 시도의 문구를 교정해 새 버전을 저장하고, 새 버전의 피드백을 요청한다. 재답변(새 시도)으로 세지 않는다.
+     * <p>
+     * 낙관적 충돌: 화면이 보고 있던 버전 번호({@code baseRevisionNo})가 현재 버전과 같을 때만 그다음 번호로 저장한다.
+     * 다른 탭에서 먼저 교정했다면 409로 알려 교정 내용이 조용히 덮어써지지 않게 한다. 연습 행 잠금이 같은 연습의
+     * 교정을 한 줄로 세우고, {@code (answer_id, revision_no)} 유일 제약이 마지막으로 막는다.
+     *
+     * @return 본문이 현재 버전과 같으면 새 버전·요청 없이 현재 상태와 created=false
+     */
+    @Transactional
+    public SubmitResult revise(long userId, long answerId, Integer baseRevisionNo, String content) {
+        if (baseRevisionNo == null) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST);
+        }
+        String normalized = normalize(content);
+        long practiceId = answerRepository.findPracticeIdForOwnerByAnswer(answerId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ANSWER_NOT_FOUND));
+        PracticeStatus status = practiceRepository.lockForOwner(practiceId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ANSWER_NOT_FOUND));
+        if (status != PracticeStatus.IN_PROGRESS) {
+            throw new BusinessException(ErrorCode.PRACTICE_COMPLETED);
+        }
+        AttemptRow current = answerRepository.findAttemptWithCurrentRevision(answerId).orElseThrow();
+        if (current.revisionNo() != baseRevisionNo) {
+            throw new BusinessException(ErrorCode.REVISION_CONFLICT);
+        }
+        if (current.content().equals(normalized)) {
+            return new SubmitResult(load(practiceId, answerId), false);
+        }
+
+        long revisionId;
+        try {
+            revisionId = answerRepository.insertRevision(answerId, baseRevisionNo + 1, normalized);
+        } catch (DuplicateKeyException ex) {
+            throw new BusinessException(ErrorCode.REVISION_CONFLICT);
+        }
+        aiRequestRepository.discardPendingForOlderRevisions(answerId, revisionId);
         aiRequestRepository.insertPending(practiceId, AiRequestKind.FEEDBACK, revisionId);
         return new SubmitResult(load(practiceId, answerId), true);
     }
