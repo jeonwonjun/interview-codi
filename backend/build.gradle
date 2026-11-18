@@ -34,5 +34,23 @@ dependencies {
 }
 
 tasks.named('test') {
-	useJUnitPlatform()
+	useJUnitPlatform {
+		excludeTags 'load'
+	}
+}
+
+// 부하 측정. 일반 테스트에서 빼고 따로 실행한다: ./gradlew loadTest [-Dload.workerConcurrency=4 ...]
+tasks.register('loadTest', Test) {
+	description = 'Runs load measurements tagged with "load".'
+	group = 'verification'
+	testClassesDirs = sourceSets.test.output.classesDirs
+	classpath = sourceSets.test.runtimeClasspath
+	useJUnitPlatform {
+		includeTags 'load'
+	}
+	systemProperties System.properties.findAll { it.key.toString().startsWith('load.') }
+	outputs.upToDateWhen { false }
+	testLogging {
+		showStandardStreams = true
+	}
 }

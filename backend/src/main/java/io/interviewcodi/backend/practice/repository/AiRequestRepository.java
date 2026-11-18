@@ -78,7 +78,8 @@ public class AiRequestRepository {
         return jdbcClient.sql("""
                         update ai_requests
                         set status = 'RUNNING', attempt_count = attempt_count + 1, lease_token = :leaseToken,
-                            lease_until = now() + make_interval(secs => :leaseSeconds), updated_at = now()
+                            lease_until = now() + make_interval(secs => :leaseSeconds),
+                            first_claimed_at = coalesce(first_claimed_at, now()), updated_at = now()
                         where id = (
                             select id
                             from ai_requests
