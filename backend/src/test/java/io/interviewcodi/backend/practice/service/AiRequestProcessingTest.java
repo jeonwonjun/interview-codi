@@ -178,7 +178,7 @@ class AiRequestProcessingTest {
     void retryRequestRejectedForStaleRevisionOrCompletedPractice() throws Exception {
         long practiceId = createPractice(me);
         Submitted submitted = submitAnswer(practiceId, "답변", me);
-        insertRevision(submitted.answerId(), 2, "교정한 답변");
+        revise(submitted.answerId(), 1, "교정한 답변");
 
         mockMvc.perform(write(post("/api/answer-revisions/{id}/feedback-requests", submitted.revisionId()), me))
                 .andExpect(status().isConflict())
@@ -236,8 +236,7 @@ class AiRequestProcessingTest {
         long practiceId = createPractice(me);
         Submitted submitted = submitAnswer(practiceId, "처음 답변", me);
         when(generator.generate(any())).thenAnswer(invocation -> {
-            // 문구 교정 API는 3단계에서 만든다. 여기서는 교정이 끝난 상태를 직접 만든다.
-            insertRevision(submitted.answerId(), 2, "교정한 답변");
+            revise(submitted.answerId(), 1, "교정한 답변");
             return FEEDBACK;
         });
 
@@ -248,7 +247,36 @@ class AiRequestProcessingTest {
         assertThat(countFeedback(submitted.revisionId())).isZero();
         mockMvc.perform(get("/api/practices/{id}", practiceId).cookie(me))
                 .andExpect(jsonPath("$.questions[0].attempts[0].currentRevision.revisionNo").value(2))
-                .andExpect(jsonPath("$.questions[0].attempts[0].feedback").isEmpty());
+                .andExpect(jsonPath("$.questions[0].attempts[0].feedback").isEmpty())
+                .andExpect(jsonPath("$.questions[0].attempts[0].feedbackRequest.status").value("PENDING"));
+    }
+
+    @Test
+    @DisplayName("교정 후 새 버전의 결과가 먼저 도착하고 이전 버전의 결과가 늦게 도착해도, 화면에는 새 버전의 피드백만 남는다")
+    void lateResultOfOldRevisionDoesNotOverwriteNewOne() throws Exception {
+        long practiceId = createPractice(me);
+        Submitted submitted = submitAnswer(practiceId, "처음 답변", me);
+        GeneratedFeedback forRevision2 = new GeneratedFeedback("교정한 답변을 봤어요.", null, null, null, "test");
+        AtomicLong calls = new AtomicLong();
+        when(generator.generate(any())).thenAnswer(invocation -> {
+            if (calls.incrementAndGet() == 1) {
+                // 버전 1을 생성하는 동안 교정이 저장되고, 버전 2의 요청이 먼저 처리돼 결과가 도착한다.
+                revise(submitted.answerId(), 1, "교정한 답변");
+                assertThat(processing.processNext()).isTrue();
+                return FEEDBACK;
+            }
+            return forRevision2;
+        });
+
+        processing.processNext();
+
+        assertThat(requestColumn(submitted.requestId(), "discard_reason")).isEqualTo("SUPERSEDED");
+        mockMvc.perform(get("/api/practices/{id}", practiceId).cookie(me))
+                .andExpect(jsonPath("$.questions[0].attempts[0].currentRevision.revisionNo").value(2))
+                .andExpect(jsonPath("$.questions[0].attempts[0].feedback.observation").value(forRevision2.observation()))
+                .andExpect(jsonPath("$.questions[0].attempts[0].feedback.suggestion").isEmpty())
+                .andExpect(jsonPath("$.questions[0].attempts[0].feedbackRequest.status").value("SUCCEEDED"));
+        assertThat(countFeedback(submitted.revisionId())).isZero();
     }
 
     @Test
@@ -368,9 +396,10 @@ class AiRequestProcessingTest {
         mockMvc.perform(write(post("/api/practices/{id}/complete", practiceId), me)).andExpect(status().isOk());
     }
 
-    private void insertRevision(long answerId, int revisionNo, String content) {
-        jdbcClient.sql("insert into answer_revisions (answer_id, revision_no, content) values (:a, :n, :c)")
-                .param("a", answerId).param("n", revisionNo).param("c", content).update();
+    private void revise(long answerId, int baseRevisionNo, String content) throws Exception {
+        mockMvc.perform(write(post("/api/answers/{id}/revisions", answerId), me)
+                        .content("{\"baseRevisionNo\":" + baseRevisionNo + ",\"content\":\"" + content + "\"}"))
+                .andExpect(status().isCreated());
     }
 
     private void makeAvailableNow(long requestId) {

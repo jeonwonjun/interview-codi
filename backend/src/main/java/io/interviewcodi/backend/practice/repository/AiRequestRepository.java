@@ -57,6 +57,23 @@ public class AiRequestRepository {
                 .update();
     }
 
+    /**
+     * 교정으로 현재 버전이 바뀐 답변 시도에서, 이전 버전을 근거로 아직 꺼내지 않은 요청을 버린다.
+     * 처리 중(RUNNING)인 요청은 워커가 결과를 반영할 때 현재 버전이 아님을 확인하고 버린다.
+     */
+    public int discardPendingForOlderRevisions(long answerId, long currentRevisionId) {
+        return jdbcClient.sql("""
+                        update ai_requests
+                        set status = 'DISCARDED', discard_reason = 'SUPERSEDED', finished_at = now(), updated_at = now()
+                        where status = 'PENDING'
+                          and answer_revision_id in (
+                              select id from answer_revisions where answer_id = :answerId and id <> :currentRevisionId)
+                        """)
+                .param("answerId", answerId)
+                .param("currentRevisionId", currentRevisionId)
+                .update();
+    }
+
     /** 답변 버전별 가장 최근 피드백 요청. */
     public List<RequestRow> findLatestFeedbackRequests(long practiceId) {
         return jdbcClient.sql("""
