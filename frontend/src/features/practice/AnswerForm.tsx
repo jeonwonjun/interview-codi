@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Button } from '../../shared/ui/Button'
+import { Card } from '../../shared/ui/Card'
+import { TextArea } from '../../shared/ui/TextArea'
 import styles from './Practice.module.css'
 
 const MAX_LENGTH = 3_000
@@ -26,33 +28,28 @@ export function AnswerForm({ initialValue = '', submitLabel, busy, onSubmit, onC
   }
 
   return (
-    <form className={styles.card} onSubmit={handleSubmit}>
-      <label className={styles.label} htmlFor="answer">
-        내 답변
-      </label>
-      <textarea
-        id="answer"
-        className={styles.textarea}
-        value={content}
-        maxLength={MAX_LENGTH}
-        placeholder="말하듯이 적어 보세요. 1분 정도면 300~500자예요."
-        onChange={(event) => setContent(event.target.value)}
-      />
-      <div className={styles.formFooter}>
-        <span className={styles.caption}>
-          {length}자 · 약 1분 분량은 300~500자
-        </span>
-        <div className={styles.actions}>
+    <Card as="div">
+      <form className={styles.form} onSubmit={handleSubmit}>
+        <TextArea
+          id="answer"
+          label="내 답변"
+          value={content}
+          maxLength={MAX_LENGTH}
+          placeholder="말하듯이 적어 보세요. 1분 정도면 300~500자예요."
+          hint={`${length}자 · 약 1분 분량은 300~500자`}
+          onChange={(event) => setContent(event.target.value)}
+        />
+        <div className={styles.formActions}>
           {onCancel && (
             <Button variant="ghost" onClick={onCancel} disabled={busy}>
               취소
             </Button>
           )}
-          <Button type="submit" disabled={busy || length === 0}>
+          <Button type="submit" loading={busy} disabled={length === 0}>
             {submitLabel}
           </Button>
         </div>
-      </div>
-    </form>
+      </form>
+    </Card>
   )
 }

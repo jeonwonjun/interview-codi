@@ -40,5 +40,15 @@
   --space-4xl: 64px;
 
   --shadow-float: 0 8px 24px rgba(22, 33, 28, 0.08);
+  --color-scrim: rgba(22, 33, 28, 0.4);
+
+  /* Motion (DESIGN.md). 들어올 때 ease-out, 나갈 때 ease-in. */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast: 150ms;
+  --duration-base: 250ms;
+  --duration-enter: 600ms;
+  --stagger: 80ms;
   --page-max-width: 720px;
 }

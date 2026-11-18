@@ -9,6 +9,7 @@ import { setUnauthorizedHandler } from './shared/api/client'
 import { Button } from './shared/ui/Button'
 import { ErrorBanner } from './shared/ui/ErrorBanner'
 import { Layout } from './shared/ui/Layout'
+import { ToastProvider } from './shared/ui/ToastProvider'
 import layoutStyles from './shared/ui/Layout.module.css'
 
 /** 백엔드가 로그인 실패 시 "/?login=error"로 돌려보낸다. 한 번 보여 준 뒤 주소에서 지운다. */
@@ -25,7 +26,9 @@ function consumeLoginError(): boolean {
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthenticatedApp />
+      <ToastProvider>
+        <AuthenticatedApp />
+      </ToastProvider>
     </BrowserRouter>
   )
 }

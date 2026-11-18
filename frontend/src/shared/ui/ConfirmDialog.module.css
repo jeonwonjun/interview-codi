@@ -1,0 +1,58 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: var(--space-lg);
+  background: var(--color-scrim);
+  animation: fade var(--duration-base) var(--ease-out) both;
+}
+
+.box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  width: min(400px, 100%);
+  padding: var(--space-xl);
+  border-radius: var(--rounded-xl);
+  background: var(--color-canvas);
+  box-shadow: var(--shadow-float);
+  animation: pop var(--duration-base) var(--ease-out) both;
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.description {
+  color: var(--color-body);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .box {
+    animation-name: fade;
+  }
+}

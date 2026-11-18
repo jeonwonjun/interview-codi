@@ -1,0 +1,61 @@
+.region {
+  position: fixed;
+  right: 0;
+  bottom: var(--space-xl);
+  left: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: center;
+  padding: 0 var(--space-lg);
+  pointer-events: none;
+}
+
+.toast {
+  max-width: 480px;
+  padding: var(--space-md) var(--space-xl);
+  border-radius: var(--rounded-full);
+  box-shadow: var(--shadow-float);
+  font-size: 15px;
+  font-weight: 500;
+  pointer-events: auto;
+  animation: enter var(--duration-base) var(--ease-out) both;
+}
+
+.info {
+  background: var(--color-ink);
+  color: var(--color-canvas);
+}
+
+.error {
+  background: var(--color-negative-pale);
+  color: var(--color-negative);
+}
+
+.leaving {
+  animation: leave 200ms var(--ease-in) both;
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes leave {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation-name: fade;
+  }
+
+  @keyframes fade {
+    from {
+      opacity: 0;
+    }
+  }
+}

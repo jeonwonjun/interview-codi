@@ -1,0 +1,44 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.label {
+  color: var(--color-mute);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 180px;
+  padding: var(--space-lg);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--rounded-lg);
+  background: var(--color-canvas);
+  font-size: 17px;
+  line-height: 1.7;
+  resize: vertical;
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.textarea:focus {
+  border-color: var(--color-primary-ink);
+  outline: none;
+}
+
+.invalid {
+  border-color: var(--color-negative);
+}
+
+.hint {
+  color: var(--color-mute);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.error {
+  color: var(--color-negative);
+  font-size: 13px;
+}

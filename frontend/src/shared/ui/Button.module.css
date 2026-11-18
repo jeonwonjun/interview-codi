@@ -1,10 +1,9 @@
 .button {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-sm);
-  min-height: 48px;
-  padding: var(--space-md) var(--space-xl);
   border: 0;
   border-radius: var(--rounded-full);
   font-size: 16px;
@@ -12,12 +11,29 @@
   line-height: 1.5;
   text-decoration: none;
   cursor: pointer;
-  transition: background-color 120ms ease;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.button:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+.md {
+  min-height: 48px;
+  padding: var(--space-md) var(--space-xl);
+}
+
+.sm {
+  min-height: 40px;
+  padding: var(--space-sm) var(--space-lg);
+  font-size: 15px;
 }
 
 .primary {
@@ -53,6 +69,42 @@
   background: var(--color-canvas-strong);
 }
 
+.danger {
+  background: var(--color-negative-pale);
+  color: var(--color-negative);
+}
+
+.danger:hover:not(:disabled) {
+  background: #fadada;
+}
+
 .block {
   width: 100%;
+}
+
+/* 로딩 중에도 폭이 흔들리지 않도록 글자는 자리만 지킨다. */
+.button.loading {
+  opacity: 1;
+  cursor: progress;
+}
+
+.loading .label {
+  visibility: hidden;
+}
+
+.spinner {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button {
+    transition: background-color var(--duration-fast) linear;
+  }
+
+  .button:active:not(:disabled) {
+    transform: none;
+  }
 }
