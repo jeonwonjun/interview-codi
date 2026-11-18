@@ -3,6 +3,7 @@ package io.interviewcodi.backend.architecture;
 import static com.tngtech.archunit.base.DescribedPredicate.not;
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAPackage;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
@@ -16,9 +17,11 @@ import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
 import com.tngtech.archunit.library.GeneralCodingRules;
+import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -86,6 +89,13 @@ class ArchitectureTest {
     static final ArchRule REPOSITORIES_RESIDE_IN_REPOSITORY_PACKAGE = classes()
             .that().areAnnotatedWith(Repository.class)
             .should().resideInAPackage("..repository");
+
+    @ArchTest
+    static final ArchRule HANDLERS_RETURN_RESPONSE_ENTITY = methods()
+            .that().areDeclaredInClassesThat().areAnnotatedWith(RestController.class)
+            .and().areMetaAnnotatedWith(RequestMapping.class)
+            .should().haveRawReturnType(ResponseEntity.class)
+            .because("상태 코드와 헤더를 응답마다 드러나게 정한다");
 
     @ArchTest
     static final ArchRule LAYERS_ARE_CALLED_TOP_DOWN = layeredArchitecture()

@@ -3,6 +3,7 @@ package io.interviewcodi.backend.practice.controller;
 import io.interviewcodi.backend.auth.domain.LoginUser;
 import io.interviewcodi.backend.practice.dto.AiRequestStatusResponse;
 import io.interviewcodi.backend.practice.service.AiRequestService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,7 +19,7 @@ class AiRequestController {
     }
 
     @GetMapping("/api/ai-requests/{requestId}")
-    AiRequestStatusResponse get(LoginUser loginUser, @PathVariable long requestId) {
-        return aiRequestService.get(loginUser.userId(), requestId);
+    ResponseEntity<AiRequestStatusResponse> get(LoginUser loginUser, @PathVariable long requestId) {
+        return ResponseEntity.ok(aiRequestService.get(loginUser.userId(), requestId));
     }
 }

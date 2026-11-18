@@ -1,6 +1,7 @@
 package io.interviewcodi.backend.health.controller;
 
 import io.interviewcodi.backend.health.dto.HealthResponse;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -14,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 class HealthController {
 
     @GetMapping
-    HealthResponse health() {
-        return new HealthResponse("UP");
+    ResponseEntity<HealthResponse> health() {
+        return ResponseEntity.ok(new HealthResponse("UP"));
     }
 }
