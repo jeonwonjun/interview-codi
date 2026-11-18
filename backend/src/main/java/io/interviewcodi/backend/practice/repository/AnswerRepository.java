@@ -172,9 +172,26 @@ public class AnswerRepository {
                 .optional();
     }
 
+    /** 꼬리질문 생성 입력과 반영 확인에 쓰는 버전의 질문·본문. */
+    public RevisionSource findRevisionSource(long revisionId) {
+        return jdbcClient.sql("""
+                        select q.id as question_id, q.practice_id, q.content as question, r.content as answer
+                        from answer_revisions r
+                        join answers a on a.id = r.answer_id
+                        join questions q on q.id = a.question_id
+                        where r.id = :revisionId
+                        """)
+                .param("revisionId", revisionId)
+                .query(RevisionSource.class)
+                .single();
+    }
+
     public record AttemptRow(long id, long questionId, int attemptNo, long revisionId, int revisionNo, String content) {
     }
 
     public record FeedbackSource(String question, String answer, String previousSuggestion) {
+    }
+
+    public record RevisionSource(long questionId, long practiceId, String question, String answer) {
     }
 }

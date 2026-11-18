@@ -71,6 +71,61 @@ public class QuestionRepository {
                 .list();
     }
 
+    public int nextOrderNo(long practiceId) {
+        return jdbcClient.sql("select coalesce(max(order_no), 0) + 1 from questions where practice_id = :practiceId")
+                .param("practiceId", practiceId)
+                .query(Integer.class)
+                .single();
+    }
+
+    public long insertFollowUp(long practiceId, int orderNo, String content, long sourceAnswerRevisionId,
+                               long aiRequestId) {
+        return jdbcClient.sql("""
+                        insert into questions (practice_id, order_no, content, source_kind,
+                                               source_answer_revision_id, ai_request_id)
+                        values (:practiceId, :orderNo, :content, 'FOLLOW_UP', :sourceAnswerRevisionId, :aiRequestId)
+                        returning id
+                        """)
+                .param("practiceId", practiceId)
+                .param("orderNo", orderNo)
+                .param("content", content)
+                .param("sourceAnswerRevisionId", sourceAnswerRevisionId)
+                .param("aiRequestId", aiRequestId)
+                .query(Long.class)
+                .single();
+    }
+
+    public List<String> findUsedPresetKeys(long practiceId) {
+        return jdbcClient.sql("select preset_key from questions where practice_id = :practiceId and preset_key is not null")
+                .param("practiceId", practiceId)
+                .query(String.class)
+                .list();
+    }
+
+    public List<String> findContents(long practiceId) {
+        return jdbcClient.sql("""
+                        select content from questions
+                        where practice_id = :practiceId and deleted_at is null
+                        order by order_no
+                        """)
+                .param("practiceId", practiceId)
+                .query(String.class)
+                .list();
+    }
+
+    public boolean hasAnswers(long questionId) {
+        return jdbcClient.sql("select exists (select 1 from answers where question_id = :questionId and deleted_at is null)")
+                .param("questionId", questionId)
+                .query(Boolean.class)
+                .single();
+    }
+
+    public void markSkipped(long questionId) {
+        jdbcClient.sql("update questions set skipped_at = now(), updated_at = now() where id = :questionId")
+                .param("questionId", questionId)
+                .update();
+    }
+
     public record CurrentQuestion(long id, boolean skipped) {
     }
 

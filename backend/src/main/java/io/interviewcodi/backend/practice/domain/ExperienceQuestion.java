@@ -1,5 +1,9 @@
 package io.interviewcodi.backend.practice.domain;
 
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Optional;
+
 /**
  * 자료 없는 연습의 고정 질문. 사용자에 대해 아는 것이 없으므로 AI로 만들지 않는다.
  * 연습 안에서 아직 쓰지 않은 것을 선언 순서대로 낸다. {@code key}는 DB의 {@code preset_key}이므로 바꾸지 않는다.
@@ -22,6 +26,13 @@ public enum ExperienceQuestion {
 
     public static ExperienceQuestion first() {
         return values()[0];
+    }
+
+    /** 이 연습에서 아직 쓰지 않은 첫 고정 질문. 다 썼으면 빈 값. */
+    public static Optional<ExperienceQuestion> nextUnused(Collection<String> usedKeys) {
+        return Arrays.stream(values())
+                .filter(question -> !usedKeys.contains(question.key))
+                .findFirst();
     }
 
     public String key() {

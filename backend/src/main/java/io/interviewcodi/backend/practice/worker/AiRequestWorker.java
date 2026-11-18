@@ -40,7 +40,7 @@ class AiRequestWorker implements SmartLifecycle {
     private ExecutorService slots;
 
     AiRequestWorker(AiRequestProcessingService processor,
-                    @Value("${practice.ai.worker.concurrency:4}") int concurrency,
+                    @Value("${practice.ai.worker.concurrency:6}") int concurrency,
                     @Value("${practice.ai.worker.poll-interval:1s}") Duration pollInterval) {
         this.processor = processor;
         this.concurrency = concurrency;
