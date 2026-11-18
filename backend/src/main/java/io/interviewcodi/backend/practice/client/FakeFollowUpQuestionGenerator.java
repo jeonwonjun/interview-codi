@@ -1,11 +1,13 @@
 package io.interviewcodi.backend.practice.client;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
  * 실제 AI 제공자를 연결하기 전까지 쓰는 개발용 꼬리질문 생성기. 답변 내용과 상관없이 정해진 질문을 돌려준다.
  */
 @Component
+@ConditionalOnProperty(name = "practice.ai.provider", havingValue = "fake", matchIfMissing = true)
 class FakeFollowUpQuestionGenerator implements FollowUpQuestionGenerator {
 
     private final FakeLatency latency;
