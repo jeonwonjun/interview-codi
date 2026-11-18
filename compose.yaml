@@ -1,0 +1,24 @@
+# 로컬 개발용 PostgreSQL. 운영 배포 설정이 아니다.
+# 실행: docker compose up -d  /  종료: docker compose down (데이터 유지)
+# 호스트의 5432는 다른 PostgreSQL이 쓰고 있을 수 있어 기본 포트를 5433으로 둔다.
+# 접속 정보는 backend/src/main/resources/application.properties의 기본값과 맞춘다.
+services:
+  postgres:
+    image: postgres:18.6
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-interview_codi}
+      POSTGRES_USER: ${POSTGRES_USER:-interview_codi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-interview_codi}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      # PostgreSQL 18 이미지부터 데이터 디렉터리의 상위 경로를 마운트한다.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres-data:
