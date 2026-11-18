@@ -1,5 +1,6 @@
 package io.interviewcodi.backend.auth;
 
+import io.interviewcodi.backend.auth.domain.LoginUser;
 import jakarta.servlet.http.Cookie;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
