@@ -1,0 +1,36 @@
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-3xl) var(--space-xl);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  text-align: center;
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: var(--space-sm);
+  border-radius: var(--radius-pill);
+  background: var(--color-brand-soft);
+  color: var(--color-brand-text);
+}
+
+.title {
+  font: var(--type-title);
+  letter-spacing: var(--tracking-title);
+  color: var(--color-text);
+}
+
+.description {
+  color: var(--color-text-secondary);
+}
+
+.action {
+  margin-top: var(--space-md);
+}

@@ -1,0 +1,11 @@
+/*
+ * LINE Seed KR Bold(SIL OFL 1.1, LINE Corporation). 눈누가 안내하는 jsDelivr 주소를 쓴다.
+ * 굵기 하나(약 510KB)만 받고, 받는 동안은 Pretendard로 먼저 보여 준다(swap).
+ */
+@font-face {
+  font-family: 'LINE Seed KR';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_11-01@1.0/LINESeedKR-Bd.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}

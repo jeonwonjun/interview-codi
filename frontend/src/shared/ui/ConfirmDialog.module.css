@@ -1,0 +1,85 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: var(--space-lg);
+  background: var(--color-scrim);
+  animation: fade var(--duration-base) var(--ease-out) both;
+}
+
+.box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  width: min(400px, 100%);
+  padding: var(--space-xl);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-float);
+  animation: pop var(--duration-base) var(--ease-out) both;
+}
+
+.title {
+  font: var(--type-title);
+  letter-spacing: var(--tracking-title);
+}
+
+.description {
+  color: var(--color-text);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+/* 나갈 때는 눌림·클릭을 받지 않는다. */
+.leaving {
+  pointer-events: none;
+  animation: fadeOut 150ms var(--ease-in) both;
+}
+
+.leaving .box {
+  animation: popOut 150ms var(--ease-in) both;
+}
+
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes popOut {
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .box {
+    animation-name: fade;
+  }
+
+  .leaving .box {
+    animation-name: fadeOut;
+  }
+}

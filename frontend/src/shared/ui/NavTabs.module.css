@@ -1,0 +1,67 @@
+.list {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+}
+
+/* 선택된 탭 뒤에 깔리는 알약. 위치와 폭은 NavTabs가 잰다. */
+.indicator {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-brand);
+}
+
+.placed {
+  transition:
+    transform var(--duration-base) var(--ease-out),
+    width var(--duration-base) var(--ease-out),
+    opacity var(--duration-fast) var(--ease-out);
+}
+
+.tab {
+  font: var(--type-button-sm);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 var(--space-lg);
+  border-radius: var(--radius-pill);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  transition:
+    color var(--duration-base) var(--ease-out),
+    transform var(--duration-fast) var(--ease-spring);
+}
+
+.tab:hover {
+  color: var(--color-text);
+}
+
+.tab[aria-current='page'] {
+  color: var(--color-on-brand);
+}
+
+.tab:active {
+  transform: scale(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .placed {
+    transition: opacity var(--duration-fast) linear;
+  }
+
+  .tab {
+    transition: color var(--duration-fast) linear;
+  }
+
+  .tab:active {
+    transform: none;
+  }
+}

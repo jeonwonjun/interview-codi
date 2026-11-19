@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react'
-import { BrowserRouter, Link, Navigate, Route, Routes } from 'react-router'
+import { LogOut } from 'lucide-react'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { LoginPage } from './features/auth/LoginPage'
 import { useAuth } from './features/auth/useAuth'
 import { HistoryPage } from './features/history/HistoryPage'
 import { HomePage } from './features/home/HomePage'
 import { PracticePage } from './features/practice/PracticePage'
 import { setUnauthorizedHandler } from './shared/api/client'
-import { Button } from './shared/ui/Button'
 import { ErrorBanner } from './shared/ui/ErrorBanner'
+import { IconButton } from './shared/ui/IconButton'
 import { Layout } from './shared/ui/Layout'
+import { NavTabs } from './shared/ui/NavTabs'
+import { ToastProvider } from './shared/ui/ToastProvider'
 import layoutStyles from './shared/ui/Layout.module.css'
 
 /** 백엔드가 로그인 실패 시 "/?login=error"로 돌려보낸다. 한 번 보여 준 뒤 주소에서 지운다. */
@@ -25,7 +28,9 @@ function consumeLoginError(): boolean {
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthenticatedApp />
+      <ToastProvider>
+        <AuthenticatedApp />
+      </ToastProvider>
     </BrowserRouter>
   )
 }
@@ -72,12 +77,14 @@ function AuthenticatedApp() {
     <Layout
       actions={
         <div className={layoutStyles.actions}>
-          <Link to="/practices" className={layoutStyles.navLink}>
-            기록
-          </Link>
-          <Button variant="ghost" onClick={() => void handleLogout()}>
-            로그아웃
-          </Button>
+          <NavTabs
+            label="화면 이동"
+            tabs={[
+              { to: '/', label: '홈' },
+              { to: '/practices', label: '기록' },
+            ]}
+          />
+          <IconButton icon={LogOut} label="로그아웃" onClick={() => void handleLogout()} />
         </div>
       }
     >

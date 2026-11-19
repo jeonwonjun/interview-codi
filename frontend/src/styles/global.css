@@ -11,11 +11,9 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--color-canvas-soft);
-  color: var(--color-ink);
-  font-family: var(--font-sans);
-  font-size: 15px;
-  line-height: 1.65;
+  background: var(--color-surface-subtle);
+  color: var(--color-text);
+  font: var(--type-body);
   -webkit-font-smoothing: antialiased;
   word-break: keep-all;
   overflow-wrap: break-word;

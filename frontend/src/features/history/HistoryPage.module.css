@@ -6,14 +6,8 @@
 }
 
 .title {
-  font-size: 26px;
-  font-weight: 700;
-  line-height: 1.4;
-  letter-spacing: -0.52px;
-}
-
-.empty {
-  color: var(--color-mute);
+  font: var(--type-display);
+  letter-spacing: var(--tracking-display);
 }
 
 .list {
@@ -29,8 +23,36 @@
   align-items: center;
   gap: var(--space-sm);
   padding: var(--space-sm) var(--space-sm) var(--space-sm) var(--space-xl);
-  border-radius: var(--rounded-xl);
-  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  transition:
+    border-color var(--duration-base) var(--ease-out),
+    box-shadow var(--duration-base) var(--ease-out);
+}
+
+.item:hover {
+  border-color: var(--color-brand);
+  box-shadow: var(--shadow-float);
+}
+
+.chevron {
+  color: var(--color-text-secondary);
+  flex: none;
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+/* 누르면 상세로 간다는 것을 화살표가 살짝 앞으로 나가며 알려 준다. */
+.link:hover .chevron,
+.link:focus-visible .chevron {
+  transform: translateX(3px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item,
+  .chevron {
+    transition: none;
+  }
 }
 
 .link {
@@ -41,7 +63,7 @@
   justify-content: space-between;
   gap: var(--space-sm);
   min-height: 48px;
-  color: var(--color-ink);
+  color: var(--color-text);
   text-decoration: none;
 }
 
@@ -50,23 +72,27 @@
 }
 
 .meta {
+  font: var(--type-caption);
+  font-weight: 400;
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  color: var(--color-mute);
-  font-size: 13px;
+  color: var(--color-text-secondary);
 }
 
-.badge {
-  padding: var(--space-xs) var(--space-md);
-  border-radius: var(--rounded-full);
-  background: var(--color-primary-pale);
-  color: var(--color-primary-ink);
-  font-weight: 500;
+.startLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  padding: var(--space-md) var(--space-xl);
+  border-radius: var(--radius-control);
+  background: var(--color-brand);
+  color: var(--color-on-brand);
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color var(--duration-fast) var(--ease-out);
 }
 
-.badgeMuted {
-  composes: badge;
-  background: var(--color-canvas-strong);
-  color: var(--color-mute);
+.startLink:hover {
+  background: var(--color-brand-hover);
 }

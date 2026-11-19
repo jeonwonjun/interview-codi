@@ -1,8 +1,12 @@
 import { useCallback, useRef, useState } from 'react'
+import { ChevronRight, CornerDownRight, Flag, MessageCirclePlus, Pencil, RotateCcw, SkipForward } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { ApiError } from '../../shared/api/client'
+import { Badge } from '../../shared/ui/Badge'
 import { Button } from '../../shared/ui/Button'
+import { Card } from '../../shared/ui/Card'
 import { ErrorBanner } from '../../shared/ui/ErrorBanner'
+import { Pending } from '../../shared/ui/Pending'
 import { AnswerForm } from './AnswerForm'
 import { FeedbackView } from './FeedbackView'
 import { formatDateTime } from './labels'
@@ -69,6 +73,12 @@ function InProgressView({ practice, reload }: { practice: Practice; reload: () =
   const previous = practice.questions.filter((question) => question.id !== current.id)
   const latest = current.attempts.at(-1)
   const followUpPending = isActive(practice.followUpRequest)
+  // 이 화면에서 기다리던 피드백만 도착할 때 순서대로 보여 준다. 새로 열었을 때 이미 있던 피드백은 바로 보여 준다.
+  const [awaitedRevisionId, setAwaitedRevisionId] = useState<number | null>(null)
+  const pendingRevisionId = latest && isActive(latest.feedbackRequest) ? latest.currentRevision.id : null
+  if (pendingRevisionId != null && pendingRevisionId !== awaitedRevisionId) {
+    setAwaitedRevisionId(pendingRevisionId)
+  }
 
   const onFeedbackFinished = useCallback(() => void reload(), [reload])
   const feedback = useAiRequestPolling(
@@ -132,14 +142,22 @@ function InProgressView({ practice, reload }: { practice: Practice; reload: () =
     <div className={styles.page}>
       {previous.length > 0 && <PreviousQuestions questions={previous} />}
 
-      <section className={styles.questionCard} aria-label="현재 질문">
+      <Card key={current.id} reveal className={styles.questionCard} aria-label="현재 질문">
         <div className={styles.badgeRow}>
-          <span className={styles.badge}>질문 {current.orderNo}</span>
-          {current.sourceKind === 'FOLLOW_UP' && <span className={styles.badgeMuted}>내 답변에서 이어진 질문</span>}
-          {latest && <span className={styles.badgeMuted}>{latest.attemptNo}번째 답변</span>}
+          <Badge>질문 {current.orderNo}</Badge>
+          {current.sourceKind === 'FOLLOW_UP' && (
+            <Badge tone="neutral" icon={CornerDownRight}>
+              이어진 질문
+            </Badge>
+          )}
+          {latest && (
+            <Badge key={latest.attemptNo} tone="neutral" pop>
+              {latest.attemptNo}번째 답변
+            </Badge>
+          )}
         </div>
         <h1 className={styles.question}>{current.content}</h1>
-      </section>
+      </Card>
 
       {error && <ErrorBanner>{error}</ErrorBanner>}
 
@@ -160,37 +178,42 @@ function InProgressView({ practice, reload }: { practice: Practice; reload: () =
         />
       ) : (
         <>
-          <section className={styles.card} aria-label="내 답변">
+          <Card aria-label="내 답변">
             <span className={styles.label}>내 답변</span>
             <p className={styles.answerText}>{latest.currentRevision.content}</p>
             <div className={styles.secondaryActions}>
-              <Button variant="ghost" onClick={() => setMode('edit')} disabled={busy || followUpPending}>
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={Pencil}
+                onClick={() => setMode('edit')}
+                disabled={busy || followUpPending}
+              >
                 답변 고치기
               </Button>
             </div>
-          </section>
+          </Card>
           <FeedbackView
             attempt={latest}
             slow={feedback.slow}
             busy={busy}
+            animate={awaitedRevisionId === latest.currentRevision.id}
             onRetry={() => void run(() => practiceApi.retryFeedback(latest.currentRevision.id))}
           />
         </>
       )}
 
       {followUpPending && (
-        <div className={styles.card} role="status">
-          <div className={styles.waiting}>
-            <span className={styles.spinner} aria-hidden="true" />
-            <span>{followUp.slow ? '다음 질문이 오래 걸리고 있어요.' : '답변을 바탕으로 다음 질문을 만들고 있어요.'}</span>
-          </div>
-        </div>
+        <Card>
+          <Pending>{followUp.slow ? '다음 질문이 오래 걸리고 있어요.' : '답변을 바탕으로 다음 질문을 만들고 있어요.'}</Pending>
+        </Card>
       )}
 
       {!showForm && mode === 'view' && (
         <div className={styles.actions}>
           {feedbackReady && !followUpPending && (
             <Button
+              icon={MessageCirclePlus}
               onClick={() => void run(() => practiceApi.requestFollowUp(practice.id, latest.currentRevision.id))}
               disabled={busy}
             >
@@ -198,7 +221,7 @@ function InProgressView({ practice, reload }: { practice: Practice; reload: () =
             </Button>
           )}
           {feedbackReady && !followUpPending && (
-            <Button variant="secondary" onClick={() => setMode('reanswer')} disabled={busy}>
+            <Button variant="secondary" icon={RotateCcw} onClick={() => setMode('reanswer')} disabled={busy}>
               다시 답하기
             </Button>
           )}
@@ -207,11 +230,17 @@ function InProgressView({ practice, reload }: { practice: Practice; reload: () =
 
       <div className={styles.secondaryActions}>
         {!followUpPending && (
-          <Button variant="ghost" onClick={() => void run(() => practiceApi.skip(current.id))} disabled={busy}>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={SkipForward}
+            onClick={() => void run(() => practiceApi.skip(current.id))}
+            disabled={busy}
+          >
             질문 넘기기
           </Button>
         )}
-        <Button variant="ghost" onClick={() => void complete()} disabled={busy}>
+        <Button variant="ghost" size="sm" icon={Flag} onClick={() => void complete()} disabled={busy}>
           연습 마치기
         </Button>
       </div>
@@ -221,8 +250,11 @@ function InProgressView({ practice, reload }: { practice: Practice; reload: () =
 
 function PreviousQuestions({ questions }: { questions: Question[] }) {
   return (
-    <details className={styles.card}>
-      <summary className={styles.label}>지난 질문 {questions.length}개</summary>
+    <details className={styles.previousCard}>
+      <summary className={`${styles.label} ${styles.summary}`}>
+        <ChevronRight className={styles.chevron} size={16} aria-hidden="true" />
+        지난 질문 {questions.length}개
+      </summary>
       <ol className={styles.previous}>
         {questions.map((question) => (
           <li key={question.id} className={styles.previousItem}>
@@ -247,10 +279,10 @@ function RecordView({ practice }: { practice: Practice }) {
         </p>
       </div>
       {practice.questions.map((question) => (
-        <section key={question.id} className={styles.questionCard}>
+        <Card key={question.id} className={styles.questionCard}>
           <div className={styles.badgeRow}>
-            <span className={styles.badge}>질문 {question.orderNo}</span>
-            {question.skipped && <span className={styles.badgeMuted}>넘긴 질문</span>}
+            <Badge>질문 {question.orderNo}</Badge>
+            {question.skipped && <Badge tone="neutral">넘긴 질문</Badge>}
           </div>
           <h2 className={styles.question}>{question.content}</h2>
           {question.attempts.map((attempt) => (
@@ -263,7 +295,7 @@ function RecordView({ practice }: { practice: Practice }) {
               <FeedbackView attempt={attempt} />
             </div>
           ))}
-        </section>
+        </Card>
       ))}
       <Link to="/">새 연습 시작하기</Link>
     </div>

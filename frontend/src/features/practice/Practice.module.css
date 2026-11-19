@@ -5,17 +5,18 @@
   padding-top: var(--space-xl);
 }
 
-.card {
+.previousCard {
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
-  padding: var(--space-xl);
-  border-radius: var(--rounded-xl);
-  background: var(--color-canvas);
+  padding: var(--space-lg) var(--space-xl);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
 }
 
+/* Card 위에 덧붙인다. 질문은 한 단계 넓게 숨 쉰다. */
 .questionCard {
-  composes: card;
   gap: var(--space-lg);
   padding: var(--space-2xl);
 }
@@ -26,119 +27,112 @@
   gap: var(--space-sm);
 }
 
-.badge {
-  padding: var(--space-xs) var(--space-md);
-  border-radius: var(--rounded-full);
-  background: var(--color-primary-pale);
-  color: var(--color-primary-ink);
-  font-size: 13px;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-}
-
-.badgeMuted {
-  composes: badge;
-  background: var(--color-canvas-strong);
-  color: var(--color-mute);
-}
-
 .question {
-  font-size: 22px;
-  font-weight: 600;
-  line-height: 1.55;
-  letter-spacing: -0.22px;
+  font: var(--type-question);
+  letter-spacing: var(--tracking-display);
 }
 
 .label {
-  color: var(--color-mute);
-  font-size: 13px;
-  font-weight: 500;
+  font: var(--type-caption);
+  color: var(--color-text-secondary);
 }
 
-.answerText {
-  color: var(--color-ink);
-  font-size: 17px;
-  line-height: 1.7;
-  white-space: pre-wrap;
-}
-
-.textarea {
-  width: 100%;
-  min-height: 180px;
-  padding: var(--space-lg);
-  border: 1px solid var(--color-hairline);
-  border-radius: var(--rounded-lg);
-  background: var(--color-canvas);
-  font-size: 17px;
-  line-height: 1.7;
-  resize: vertical;
-}
-
-.textarea:focus {
-  border-color: var(--color-primary-ink);
-  outline: none;
-}
-
-.formFooter {
-  display: flex;
+.feedbackLabel {
+  font: var(--type-caption);
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-md);
+  gap: 6px;
+  color: var(--color-text-secondary);
 }
 
-.caption {
-  color: var(--color-mute);
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
+.feedbackIconDone {
+  color: var(--color-brand-text);
 }
 
-.observation {
-  color: var(--color-body);
+/* 빈 말풍선이 채워진 말풍선으로 바뀌는 순간을 배지처럼 톡 알린다. */
+.feedbackIconPop {
+  animation: iconPop 400ms var(--ease-spring) both;
 }
 
-.tip {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  padding: var(--space-lg) var(--space-xl);
-  border-radius: var(--rounded-lg);
-  background: var(--color-tip);
-  color: var(--color-tip-ink);
-  font-weight: 600;
-}
-
-.tipLabel {
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.waiting {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-  color: var(--color-body);
-}
-
-.spinner {
-  flex: none;
-  width: 18px;
-  height: 18px;
-  border: 2px solid var(--color-primary-pale);
-  border-top-color: var(--color-primary-ink);
-  border-radius: var(--rounded-full);
-  animation: spin 0.9s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
+@keyframes iconPop {
+  from {
+    transform: scale(0.6);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .spinner {
+  .feedbackIconPop {
     animation: none;
   }
+}
+
+.answerText {
+  font: var(--type-body-lg);
+  color: var(--color-text);
+  white-space: pre-wrap;
+}
+
+.caption {
+  font: var(--type-caption);
+  font-weight: 400;
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.observation {
+  font: var(--type-body-lg);
+  color: var(--color-text);
+}
+
+.tip {
+  font: var(--type-body-lg);
+  font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-lg) var(--space-xl);
+  border-radius: var(--radius-card);
+  background: var(--color-improve-soft);
+  color: var(--color-text);
+}
+
+/* knoted.kr 카드 강조처럼 노란색이 천천히(800ms) 스며든다. Reveal과 같은 시각에 시작한다. */
+.tipArrive {
+  animation: warm var(--duration-slow) ease both;
+}
+
+@keyframes warm {
+  from {
+    background: var(--color-surface-subtle);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tipArrive {
+    animation: none;
+  }
+}
+
+/* 보완 포인트 색은 이름표에만 쓴다. 본문까지 칠하면 노란 바탕 위에서 읽기 어렵다. */
+.tipLabel {
+  font: var(--type-caption);
+  font-weight: 600;
+  color: var(--color-improve);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
 }
 
 .actions {
@@ -153,6 +147,49 @@
   gap: var(--space-xs);
 }
 
+.summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: 24px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.summary::-webkit-details-marker {
+  display: none;
+}
+
+.chevron {
+  display: inline-block;
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+details[open] .chevron {
+  transform: rotate(90deg);
+}
+
+details[open] .previous {
+  animation: unfold var(--duration-base) var(--ease-out) both;
+}
+
+@keyframes unfold {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chevron {
+    transition: none;
+  }
+
+  details[open] .previous {
+    animation: none;
+  }
+}
+
 .previous {
   display: flex;
   flex-direction: column;
@@ -160,14 +197,12 @@
 }
 
 .previousItem {
-  color: var(--color-body);
+  color: var(--color-text);
 }
 
 .title {
-  font-size: 26px;
-  font-weight: 700;
-  line-height: 1.4;
-  letter-spacing: -0.52px;
+  font: var(--type-display);
+  letter-spacing: var(--tracking-display);
 }
 
 .attempt {
@@ -175,16 +210,12 @@
   flex-direction: column;
   gap: var(--space-md);
   padding-top: var(--space-lg);
-  border-top: 1px solid var(--color-hairline);
+  border-top: 1px solid var(--color-border);
 }
 
 @media (max-width: 767px) {
-  .card,
+  .previousCard,
   .questionCard {
-    padding: 20px;
-  }
-
-  .question {
-    font-size: 20px;
+    padding: var(--space-card-mobile);
   }
 }

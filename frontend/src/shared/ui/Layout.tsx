@@ -6,13 +6,13 @@ export function Layout({ actions, children }: { actions?: ReactNode; children: R
   return (
     <>
       <header>
-        <nav className={styles.nav}>
+        <div className={styles.nav}>
           <Link to="/" className={styles.brand}>
             <img className={styles.logo} src="/favicon.svg" alt="" />
             면접코디
           </Link>
           {actions}
-        </nav>
+        </div>
       </header>
       <main className={styles.main}>{children}</main>
     </>
