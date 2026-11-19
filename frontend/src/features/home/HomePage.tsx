@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { ChevronRight, FileText, MessageSquareText } from 'lucide-react'
 import { Link, useNavigate } from 'react-router'
 import { Button } from '../../shared/ui/Button'
 import { ErrorBanner } from '../../shared/ui/ErrorBanner'
@@ -59,7 +60,10 @@ export function HomePage() {
               {inProgress.map((item) => (
                 <li key={item.id}>
                   <Link to={`/practices/${item.id}`} className={styles.resumeLink}>
-                    {formatDateTime(item.createdAt)} 시작 · 질문 {item.questionCount}개
+                    <span>
+                      {formatDateTime(item.createdAt)} 시작 · 질문 {item.questionCount}개
+                    </span>
+                    <ChevronRight size={18} strokeWidth={2} aria-hidden="true" />
                   </Link>
                 </li>
               ))}
@@ -68,7 +72,10 @@ export function HomePage() {
         )}
 
         <section className={styles.choice}>
-          <h2 className={styles.choiceTitle}>자료 없이 바로 연습</h2>
+          <h2 className={styles.choiceTitle}>
+            <MessageSquareText size={20} strokeWidth={2} aria-hidden="true" />
+            자료 없이 바로 연습
+          </h2>
           <p className={styles.choiceBody}>내가 만든 프로젝트에 대한 질문으로 시작해요. 답변에 맞춰 꼬리질문이 이어져요.</p>
           <Button block onClick={() => void start()} disabled={starting}>
             연습 시작하기
@@ -77,7 +84,10 @@ export function HomePage() {
 
         <section className={styles.choice}>
           <div className={styles.choiceHeader}>
-            <h2 className={styles.choiceTitle}>이력서로 맞춤 연습</h2>
+            <h2 className={styles.choiceTitle}>
+              <FileText size={20} strokeWidth={2} aria-hidden="true" />
+              이력서로 맞춤 연습
+            </h2>
             <span className={styles.badge}>준비 중</span>
           </div>
           <p className={styles.choiceBody}>이력서에 적은 경험을 바탕으로 질문을 만들어요.</p>

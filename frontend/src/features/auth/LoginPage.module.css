@@ -6,26 +6,22 @@
 }
 
 .eyebrow {
+  font: var(--type-caption);
   align-self: flex-start;
   padding: var(--space-xs) var(--space-md);
-  border-radius: var(--rounded-full);
-  background: var(--color-primary-pale);
-  color: var(--color-primary-ink);
-  font-size: 13px;
-  font-weight: 500;
+  border-radius: var(--radius-pill);
+  background: var(--color-brand-soft);
+  color: var(--color-brand-text);
 }
 
 .title {
-  font-size: 32px;
-  font-weight: 700;
-  line-height: 1.35;
-  letter-spacing: -0.64px;
+  font: var(--type-display);
+  letter-spacing: var(--tracking-display);
 }
 
 .lead {
-  color: var(--color-body);
-  font-size: 17px;
-  line-height: 1.7;
+  font: var(--type-body-lg);
+  color: var(--color-text);
 }
 
 .card {
@@ -33,8 +29,9 @@
   flex-direction: column;
   gap: var(--space-xl);
   padding: var(--space-xl);
-  border-radius: var(--rounded-xl);
-  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
 }
 
 .steps {
@@ -49,26 +46,27 @@
   display: flex;
   align-items: flex-start;
   gap: var(--space-md);
-  color: var(--color-body);
+  color: var(--color-text);
 }
 
 .stepNumber {
+  font: var(--type-caption);
+  font-weight: 600;
   flex: none;
   display: grid;
   place-items: center;
   width: 28px;
   height: 28px;
-  border-radius: var(--rounded-full);
-  background: var(--color-primary-pale);
-  color: var(--color-primary-ink);
-  font-size: 13px;
-  font-weight: 600;
+  border-radius: var(--radius-pill);
+  background: var(--color-brand-soft);
+  color: var(--color-brand-text);
   font-variant-numeric: tabular-nums;
 }
 
 .note {
-  color: var(--color-mute);
-  font-size: 13px;
+  font: var(--type-caption);
+  font-weight: 400;
+  color: var(--color-text-secondary);
   text-align: center;
 }
 
@@ -77,12 +75,7 @@
     padding-top: var(--space-2xl);
   }
 
-  .title {
-    font-size: 26px;
-    letter-spacing: -0.52px;
-  }
-
   .card {
-    padding: 20px;
+    padding: var(--space-card-mobile);
   }
 }

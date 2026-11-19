@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
+import { CalendarDays, ChevronRight, Trash2 } from 'lucide-react'
 import { Link } from 'react-router'
 import { Badge } from '../../shared/ui/Badge'
-import { Button } from '../../shared/ui/Button'
 import { ConfirmDialog } from '../../shared/ui/ConfirmDialog'
 import { EmptyState } from '../../shared/ui/EmptyState'
 import { ErrorBanner } from '../../shared/ui/ErrorBanner'
+import { IconButton } from '../../shared/ui/IconButton'
 import { useToast } from '../../shared/ui/toastContext'
 import { formatDateTime } from '../practice/labels'
 import { practiceApi, type PracticeSummary } from '../practice/practiceApi'
@@ -53,6 +54,7 @@ export function HistoryPage() {
       {error && <ErrorBanner>{error}</ErrorBanner>}
       {items?.length === 0 && (
         <EmptyState
+          icon={CalendarDays}
           title="아직 연습 기록이 없어요."
           description="프로젝트 경험 질문 하나에 답해 보면 여기에 쌓여요."
           action={
@@ -70,17 +72,18 @@ export function HistoryPage() {
               <span className={styles.meta}>
                 <Badge tone={item.canProceed ? 'primary' : 'neutral'}>{item.canProceed ? '이어하기' : '마침'}</Badge>
                 질문 {item.questionCount}개
-                <span className={styles.chevron} aria-hidden="true">
-                  ›
-                </span>
+                <ChevronRight className={styles.chevron} size={18} strokeWidth={2} aria-hidden="true" />
               </span>
             </Link>
-            <Button variant="ghost" size="sm" onClick={() => {
+            <IconButton
+              icon={Trash2}
+              tone="danger"
+              label={`${formatDateTime(item.createdAt)} 연습 삭제`}
+              onClick={() => {
                 setTarget(item)
                 setConfirming(true)
-              }} aria-label={`${formatDateTime(item.createdAt)} 연습 삭제`}>
-              삭제
-            </Button>
+              }}
+            />
           </li>
         ))}
       </ul>

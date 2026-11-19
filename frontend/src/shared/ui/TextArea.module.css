@@ -5,28 +5,30 @@
 }
 
 .label {
-  color: var(--color-mute);
-  font-size: 13px;
-  font-weight: 500;
+  font: var(--type-caption);
+  color: var(--color-text-secondary);
 }
 
 .textarea {
+  font: var(--type-body-lg);
   width: 100%;
   min-height: 180px;
   padding: var(--space-lg);
-  border: 1px solid var(--color-hairline);
-  border-radius: var(--rounded-lg);
-  background: var(--color-canvas);
-  font-size: 17px;
-  line-height: 1.7;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
   resize: vertical;
   transition:
     border-color var(--duration-fast) var(--ease-out),
     box-shadow var(--duration-fast) var(--ease-out);
 }
 
+.textarea::placeholder {
+  color: var(--color-text-muted);
+}
+
 .textarea:hover:not(:focus) {
-  border-color: var(--color-mute);
+  border-color: var(--color-text-muted);
 }
 
 /* 테두리 1px + 그림자 1px로 2px 포커스 링을 만든다. outline을 겹치면 링이 두 겹으로 보인다. */
@@ -37,22 +39,23 @@
 }
 
 .invalid {
-  border-color: var(--color-negative);
+  border-color: var(--color-alert);
 }
 
 .hint {
-  color: var(--color-mute);
-  font-size: 13px;
+  font: var(--type-caption);
+  font-weight: 400;
+  color: var(--color-text-secondary);
   font-variant-numeric: tabular-nums;
   transition: color var(--duration-base) var(--ease-out);
 }
 
 .positive {
-  color: var(--color-primary-ink);
+  color: var(--color-brand-text);
   font-weight: 500;
 }
 
 .error {
-  color: var(--color-negative);
-  font-size: 13px;
+  font: var(--type-caption);
+  color: var(--color-alert);
 }

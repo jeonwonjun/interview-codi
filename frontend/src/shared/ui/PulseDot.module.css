@@ -4,7 +4,7 @@
   flex: none;
   width: 6px;
   height: 6px;
-  border-radius: var(--rounded-full);
+  border-radius: var(--radius-pill);
   background: currentColor;
   animation: breathe 1.4s var(--ease-in-out) infinite both;
 }

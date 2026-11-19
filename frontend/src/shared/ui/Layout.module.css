@@ -9,12 +9,11 @@
 }
 
 .brand {
+  font: 700 18px / 1.4 var(--font-display);
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  color: var(--color-ink);
-  font-size: 17px;
-  font-weight: 700;
+  color: var(--color-text);
   text-decoration: none;
 }
 
@@ -36,16 +35,18 @@
 }
 
 .navLink {
+  font: var(--type-button-sm);
   display: inline-flex;
   align-items: center;
+  gap: 6px;
   min-height: 40px;
   padding: var(--space-sm) var(--space-lg);
-  border-radius: var(--rounded-full);
-  color: var(--color-body);
-  font-weight: 600;
+  border-radius: var(--radius-control);
+  color: var(--color-text-secondary);
   text-decoration: none;
 }
 
 .navLink:hover {
-  background: var(--color-canvas-strong);
+  background: var(--color-border);
+  color: var(--color-text);
 }

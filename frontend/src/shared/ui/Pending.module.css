@@ -2,12 +2,12 @@
   display: flex;
   align-items: center;
   gap: var(--space-md);
-  color: var(--color-body);
+  color: var(--color-text);
 }
 
 .dots {
   display: inline-flex;
-  color: var(--color-primary-ink);
+  color: var(--color-brand-text);
 }
 
 /* "오래 걸리고 있어요"처럼 문구가 바뀌면 부드럽게 바꿔 끼운다. */

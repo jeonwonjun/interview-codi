@@ -10,8 +10,9 @@
   flex-direction: column;
   gap: var(--space-md);
   padding: var(--space-lg) var(--space-xl);
-  border-radius: var(--rounded-xl);
-  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
 }
 
 /* Card 위에 덧붙인다. 질문은 한 단계 넓게 숨 쉰다. */
@@ -27,44 +28,43 @@
 }
 
 .question {
-  font-size: 22px;
-  font-weight: 600;
-  line-height: 1.55;
-  letter-spacing: -0.22px;
+  font: var(--type-question);
+  letter-spacing: var(--tracking-display);
 }
 
 .label {
-  color: var(--color-mute);
-  font-size: 13px;
-  font-weight: 500;
+  font: var(--type-caption);
+  color: var(--color-text-secondary);
 }
 
 .answerText {
-  color: var(--color-ink);
-  font-size: 17px;
-  line-height: 1.7;
+  font: var(--type-body-lg);
+  color: var(--color-text);
   white-space: pre-wrap;
 }
 
 .caption {
-  color: var(--color-mute);
-  font-size: 13px;
+  font: var(--type-caption);
+  font-weight: 400;
+  color: var(--color-text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
 .observation {
-  color: var(--color-body);
+  font: var(--type-body-lg);
+  color: var(--color-text);
 }
 
 .tip {
+  font: var(--type-body-lg);
+  font-weight: 600;
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
   padding: var(--space-lg) var(--space-xl);
-  border-radius: var(--rounded-lg);
-  background: var(--color-tip);
-  color: var(--color-tip-ink);
-  font-weight: 600;
+  border-radius: var(--radius-card);
+  background: var(--color-improve-soft);
+  color: var(--color-text);
 }
 
 /* knoted.kr 카드 강조처럼 노란색이 천천히(800ms) 스며든다. Reveal과 같은 시각에 시작한다. */
@@ -74,7 +74,7 @@
 
 @keyframes warm {
   from {
-    background: var(--color-canvas-soft);
+    background: var(--color-surface-subtle);
   }
 }
 
@@ -84,9 +84,14 @@
   }
 }
 
+/* 보완 포인트 색은 이름표에만 쓴다. 본문까지 칠하면 노란 바탕 위에서 읽기 어렵다. */
 .tipLabel {
-  font-size: 13px;
-  font-weight: 500;
+  font: var(--type-caption);
+  font-weight: 600;
+  color: var(--color-improve);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
 }
 
 .form {
@@ -163,14 +168,12 @@ details[open] .previous {
 }
 
 .previousItem {
-  color: var(--color-body);
+  color: var(--color-text);
 }
 
 .title {
-  font-size: 26px;
-  font-weight: 700;
-  line-height: 1.4;
-  letter-spacing: -0.52px;
+  font: var(--type-display);
+  letter-spacing: var(--tracking-display);
 }
 
 .attempt {
@@ -178,16 +181,12 @@ details[open] .previous {
   flex-direction: column;
   gap: var(--space-md);
   padding-top: var(--space-lg);
-  border-top: 1px solid var(--color-hairline);
+  border-top: 1px solid var(--color-border);
 }
 
 @media (max-width: 767px) {
   .previousCard,
   .questionCard {
-    padding: 20px;
-  }
-
-  .question {
-    font-size: 20px;
+    padding: var(--space-card-mobile);
   }
 }

@@ -1,18 +1,17 @@
 .button {
+  font: var(--type-button);
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-sm);
-  border: 0;
-  border-radius: var(--rounded-full);
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.5;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
   text-decoration: none;
   cursor: pointer;
   transition:
     background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
     transform var(--duration-fast) var(--ease-out);
 }
 
@@ -31,51 +30,50 @@
 }
 
 .sm {
+  font: var(--type-button-sm);
   min-height: 40px;
   padding: var(--space-sm) var(--space-lg);
-  font-size: 15px;
 }
 
 .primary {
-  background: var(--color-primary);
-  color: var(--color-on-primary);
+  background: var(--color-brand);
+  color: var(--color-on-brand);
 }
 
-.primary:hover:not(:disabled) {
-  background: var(--color-primary-hover);
-}
-
+.primary:hover:not(:disabled),
 .primary:active:not(:disabled) {
-  background: var(--color-primary-pressed);
+  background: var(--color-brand-hover);
 }
 
 .secondary {
-  background: var(--color-canvas-strong);
-  color: var(--color-ink);
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 
 .secondary:hover:not(:disabled) {
-  background: var(--color-hairline);
+  background: var(--color-surface-subtle);
 }
 
 .ghost {
   min-height: 40px;
   padding: var(--space-sm) var(--space-lg);
   background: transparent;
-  color: var(--color-body);
+  color: var(--color-text-secondary);
 }
 
 .ghost:hover:not(:disabled) {
-  background: var(--color-canvas-strong);
+  background: var(--color-border);
+  color: var(--color-text);
 }
 
 .danger {
-  background: var(--color-negative-pale);
-  color: var(--color-negative);
+  background: var(--color-alert-soft);
+  color: var(--color-alert);
 }
 
 .danger:hover:not(:disabled) {
-  background: #fadada;
+  background: color-mix(in srgb, var(--color-alert) 12%, var(--color-surface));
 }
 
 .block {
@@ -89,7 +87,14 @@
 }
 
 .label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.icon {
+  flex: none;
 }
 
 .loading .label {

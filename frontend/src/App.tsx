@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { CalendarDays, LogOut } from 'lucide-react'
 import { BrowserRouter, Link, Navigate, Route, Routes } from 'react-router'
 import { LoginPage } from './features/auth/LoginPage'
 import { useAuth } from './features/auth/useAuth'
@@ -6,8 +7,8 @@ import { HistoryPage } from './features/history/HistoryPage'
 import { HomePage } from './features/home/HomePage'
 import { PracticePage } from './features/practice/PracticePage'
 import { setUnauthorizedHandler } from './shared/api/client'
-import { Button } from './shared/ui/Button'
 import { ErrorBanner } from './shared/ui/ErrorBanner'
+import { IconButton } from './shared/ui/IconButton'
 import { Layout } from './shared/ui/Layout'
 import { ToastProvider } from './shared/ui/ToastProvider'
 import layoutStyles from './shared/ui/Layout.module.css'
@@ -76,11 +77,10 @@ function AuthenticatedApp() {
       actions={
         <div className={layoutStyles.actions}>
           <Link to="/practices" className={layoutStyles.navLink}>
+            <CalendarDays size={18} strokeWidth={2} aria-hidden="true" />
             기록
           </Link>
-          <Button variant="ghost" onClick={() => void handleLogout()}>
-            로그아웃
-          </Button>
+          <IconButton icon={LogOut} label="로그아웃" onClick={() => void handleLogout()} />
         </div>
       }
     >

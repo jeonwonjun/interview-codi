@@ -1,3 +1,4 @@
+import { Lightbulb, RotateCcw } from 'lucide-react'
 import { Button } from '../../shared/ui/Button'
 import { Card } from '../../shared/ui/Card'
 import { Pending } from '../../shared/ui/Pending'
@@ -50,6 +51,7 @@ export function FeedbackView({ attempt, slow = false, onRetry, busy = false, ani
               style={animate ? { animationDelay: `${tipAt}ms` } : undefined}
             >
               <span className={styles.tipLabel}>
+                <Lightbulb size={14} strokeWidth={2.25} aria-hidden="true" />
                 다음에 바꿔 볼 한 가지
                 {feedback.suggestionFocus && ` · ${FOCUS_LABEL[feedback.suggestionFocus]}`}
               </span>
@@ -76,7 +78,7 @@ export function FeedbackView({ attempt, slow = false, onRetry, busy = false, ani
       <p className={styles.observation}>피드백을 만들지 못했어요. 답변은 그대로 저장되어 있어요.</p>
       {onRetry && (
         <div>
-          <Button variant="secondary" onClick={onRetry} loading={busy}>
+          <Button variant="secondary" icon={RotateCcw} onClick={onRetry} loading={busy}>
             피드백 다시 요청
           </Button>
         </div>

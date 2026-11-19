@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
+import { ChevronRight, CornerDownRight, Flag, MessageCirclePlus, Pencil, RotateCcw, SkipForward } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { ApiError } from '../../shared/api/client'
 import { Badge } from '../../shared/ui/Badge'
@@ -144,7 +145,11 @@ function InProgressView({ practice, reload }: { practice: Practice; reload: () =
       <Card key={current.id} reveal className={styles.questionCard} aria-label="현재 질문">
         <div className={styles.badgeRow}>
           <Badge>질문 {current.orderNo}</Badge>
-          {current.sourceKind === 'FOLLOW_UP' && <Badge tone="neutral">내 답변에서 이어진 질문</Badge>}
+          {current.sourceKind === 'FOLLOW_UP' && (
+            <Badge tone="neutral" icon={CornerDownRight}>
+              이어진 질문
+            </Badge>
+          )}
           {latest && (
             <Badge key={latest.attemptNo} tone="neutral" pop>
               {latest.attemptNo}번째 답변
@@ -177,7 +182,13 @@ function InProgressView({ practice, reload }: { practice: Practice; reload: () =
             <span className={styles.label}>내 답변</span>
             <p className={styles.answerText}>{latest.currentRevision.content}</p>
             <div className={styles.secondaryActions}>
-              <Button variant="ghost" size="sm" onClick={() => setMode('edit')} disabled={busy || followUpPending}>
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={Pencil}
+                onClick={() => setMode('edit')}
+                disabled={busy || followUpPending}
+              >
                 답변 고치기
               </Button>
             </div>
@@ -202,6 +213,7 @@ function InProgressView({ practice, reload }: { practice: Practice; reload: () =
         <div className={styles.actions}>
           {feedbackReady && !followUpPending && (
             <Button
+              icon={MessageCirclePlus}
               onClick={() => void run(() => practiceApi.requestFollowUp(practice.id, latest.currentRevision.id))}
               disabled={busy}
             >
@@ -209,7 +221,7 @@ function InProgressView({ practice, reload }: { practice: Practice; reload: () =
             </Button>
           )}
           {feedbackReady && !followUpPending && (
-            <Button variant="secondary" onClick={() => setMode('reanswer')} disabled={busy}>
+            <Button variant="secondary" icon={RotateCcw} onClick={() => setMode('reanswer')} disabled={busy}>
               다시 답하기
             </Button>
           )}
@@ -218,11 +230,17 @@ function InProgressView({ practice, reload }: { practice: Practice; reload: () =
 
       <div className={styles.secondaryActions}>
         {!followUpPending && (
-          <Button variant="ghost" size="sm" onClick={() => void run(() => practiceApi.skip(current.id))} disabled={busy}>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={SkipForward}
+            onClick={() => void run(() => practiceApi.skip(current.id))}
+            disabled={busy}
+          >
             질문 넘기기
           </Button>
         )}
-        <Button variant="ghost" size="sm" onClick={() => void complete()} disabled={busy}>
+        <Button variant="ghost" size="sm" icon={Flag} onClick={() => void complete()} disabled={busy}>
           연습 마치기
         </Button>
       </div>
@@ -234,9 +252,7 @@ function PreviousQuestions({ questions }: { questions: Question[] }) {
   return (
     <details className={styles.previousCard}>
       <summary className={`${styles.label} ${styles.summary}`}>
-        <span className={styles.chevron} aria-hidden="true">
-          ›
-        </span>
+        <ChevronRight className={styles.chevron} size={16} strokeWidth={2.25} aria-hidden="true" />
         지난 질문 {questions.length}개
       </summary>
       <ol className={styles.previous}>
