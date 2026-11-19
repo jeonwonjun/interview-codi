@@ -22,7 +22,7 @@ export function IconButton({ icon: Icon, label, tone = 'default', className, typ
       title={label}
       {...props}
     >
-      <Icon size={18} strokeWidth={2} aria-hidden="true" />
+      <Icon size={18} aria-hidden="true" />
     </button>
   )
 }

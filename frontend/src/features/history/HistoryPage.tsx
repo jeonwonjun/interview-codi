@@ -72,7 +72,7 @@ export function HistoryPage() {
               <span className={styles.meta}>
                 <Badge tone={item.canProceed ? 'primary' : 'neutral'}>{item.canProceed ? '이어하기' : '마침'}</Badge>
                 질문 {item.questionCount}개
-                <ChevronRight className={styles.chevron} size={18} strokeWidth={2} aria-hidden="true" />
+                <ChevronRight className={styles.chevron} size={18} aria-hidden="true" />
               </span>
             </Link>
             <IconButton

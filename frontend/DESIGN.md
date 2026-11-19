@@ -284,16 +284,21 @@ components:
 
 ## Icons
 
-[lucide-react](https://lucide.dev)(ISC) 1.68.0을 버전 고정으로 쓴다. 24px 격자, 2px 선, 둥근 끝이라 둥근 LINE Seed 제목과 어울린다.
+[lucide-react](https://lucide.dev)(ISC) 1.68.0을 버전 고정으로 쓴다. 24px 격자, 둥근 끝·둥근 꺾임이라 둥근 LINE Seed 제목과 어울린다.
 
-- 크기: 버튼 md 18px, 버튼 sm·배지 14~16px, 아이콘 버튼 18px(누를 영역 40px), 빈 화면 28px(64px 원 안). 선 굵기 2(배지 2.25, 빈 화면 1.75).
+참고: knoted.kr(실측: 1.5px 둥근 선 SVG, 켜진 상태는 같은 아이콘을 채워서 표시, 탭 알약이 0.24s 미끄러짐). knoted의 채팅·녹음 버튼은 그 서비스가 canvas로 직접 그린 손그림이라 모양과 점묘 효과는 가져오지 않고 방식만 참고한다. 다른 아이콘 세트(예: Lineicons)는 라이선스를 확인하고 Lucide에 없는 것만, 선 두께와 끝 모양을 맞춰 쓴다.
+
+- 크기: 버튼 md 18px, 버튼 sm·배지 14~16px, 아이콘 버튼 18px(누를 영역 40px), 빈 화면 28px(64px 원 안).
+- 선 굵기: 크기와 상관없이 화면에서 **1.75px**. `main.tsx`의 `LucideProvider`(`strokeWidth={1.75}`, `absoluteStrokeWidth`)가 정하므로 아이콘마다 `strokeWidth`를 쓰지 않는다.
+- **켜진 상태는 채운 아이콘**: 같은 아이콘을 빈 선(꺼짐·기다림) ↔ 채움(켜짐·도착)으로 바꿔 상태를 보여 준다. 채울 때는 `fill="currentColor"`. 안쪽에 선이 있는 아이콘(`MessageSquareText` 등)은 채우면 선이 사라지므로 바깥선만 있는 아이콘(`MessageSquare`, `Mic`)을 쓴다. 바뀌는 순간 0.6 → 1로 톡(400ms, spring). 색만으로 알리지 않고 글자를 함께 둔다.
 - 색은 글자색을 따른다(`currentColor`). 아이콘만으로 색 의미를 주지 않는다.
 - **아이콘만**: 뜻이 분명할 때만 `IconButton`으로 쓰고 `label`(화면 읽기 이름 + 말풍선)을 반드시 단다. 삭제(`Trash2`, 확인 창을 거친다), 로그아웃(`LogOut`), 펼치기·이동 화살표(`ChevronRight`), 닫기(`X`).
 - **아이콘 + 글자**: 그 밖의 행동은 글자를 남기고 앞에 아이콘을 둔다. 아이콘은 화면 읽기 프로그램에 숨긴다(`aria-hidden`).
 
 | 쓰는 곳 | 아이콘 |
 | --- | --- |
-| 기록(메뉴) | `CalendarDays` |
+| 상단 홈·기록 탭 | 아이콘 없이 글자만(NavTabs) |
+| 피드백 이름표 | `MessageSquare`: 기다림·실패는 빈 선, 도착하면 채움 |
 | 자료 없이 바로 연습 / 이력서로 맞춤 연습 | `MessageSquareText` / `FileText` |
 | 이어진 질문 배지 | `CornerDownRight` |
 | 답변 고치기 | `Pencil` |
@@ -302,7 +307,7 @@ components:
 | 질문 넘기기 / 연습 마치기 | `SkipForward` / `Flag` |
 | improve-box("다음에 바꿔 볼 한 가지") | `Lightbulb` |
 | good-box(잘한 점) | `ThumbsUp` |
-| recording-indicator, 말로 답하기 | `Mic` (멈춤 `Square`) |
+| recording-indicator, 말로 답하기 | `Mic`: 대기는 빈 선, 녹음 중은 `alert` 색으로 채움 (멈춤 `Square`) |
 | 빈 기록 | `CalendarDays` |
 | 완료 알림 | 직접 그린 체크(선이 그려지는 움직임 때문에 lucide `Check` 대신) |
 
@@ -367,6 +372,8 @@ components:
 | 접고 펴기(지난 질문) | 화살표가 90° 돌고(250ms) 내용이 위 4px에서 내려옴 |
 | 기록 목록 호버 | 그림자가 떠오르고(250ms) 화살표가 3px 앞으로 |
 | 버튼 누름 | 0.98로 살짝 작아짐(150ms) |
+| 상단 탭 이동 | 선택 알약(`brand`)이 다음 탭 자리로 미끄러지며 폭을 맞춤(250ms, ease-out), 글자색은 같은 시간에 흰색으로. 처음 그릴 때는 미끄러지지 않고 제자리. 맞는 탭이 없는 화면(연습 상세)에서는 그 자리에서 흐려짐 |
+| 피드백 도착 아이콘 | 이름표의 빈 말풍선이 채워진 말풍선으로 바뀌며 톡(0.6 → 1, 400ms, spring) |
 
 ## Component states
 
@@ -380,6 +387,7 @@ components:
 | Dialog | default · danger(삭제 등 되돌릴 수 없는 동작) | 열림 · 닫히는 중(150ms, 입력 받지 않음) · 닫힘. Esc·배경 클릭으로 닫힘, 열리면 취소에 포커스, Tab은 창 안에서만, 닫히면 연 버튼으로 포커스 복귀 |
 | PulseDot · PulseDots | 점 하나(녹음처럼 이어지는 상태) · 점 셋(만드는 중) | 반복(동작 줄이기면 멈춤). 옆에 상태 문구를 함께 둔다 |
 | EmptyState | — | 제목 · 설명 · 행동 버튼(선택) |
+| NavTabs | — | 기본(`text-secondary`) · 호버(`text`) · 선택(`brand` 알약 + 흰 글자, `aria-current="page"`) · 누름(0.96). 테두리 1px 흰 알약 안에 둔다 |
 
 - `danger`는 삭제처럼 되돌릴 수 없는 동작의 확인 버튼에만 쓴다. 답변 피드백에는 쓰지 않는다(Colors의 기능 의미 규칙).
 

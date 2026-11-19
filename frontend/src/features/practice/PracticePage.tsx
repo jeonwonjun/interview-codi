@@ -252,7 +252,7 @@ function PreviousQuestions({ questions }: { questions: Question[] }) {
   return (
     <details className={styles.previousCard}>
       <summary className={`${styles.label} ${styles.summary}`}>
-        <ChevronRight className={styles.chevron} size={16} strokeWidth={2.25} aria-hidden="true" />
+        <ChevronRight className={styles.chevron} size={16} aria-hidden="true" />
         지난 질문 {questions.length}개
       </summary>
       <ol className={styles.previous}>

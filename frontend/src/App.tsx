@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { CalendarDays, LogOut } from 'lucide-react'
-import { BrowserRouter, Link, Navigate, Route, Routes } from 'react-router'
+import { LogOut } from 'lucide-react'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { LoginPage } from './features/auth/LoginPage'
 import { useAuth } from './features/auth/useAuth'
 import { HistoryPage } from './features/history/HistoryPage'
@@ -10,6 +10,7 @@ import { setUnauthorizedHandler } from './shared/api/client'
 import { ErrorBanner } from './shared/ui/ErrorBanner'
 import { IconButton } from './shared/ui/IconButton'
 import { Layout } from './shared/ui/Layout'
+import { NavTabs } from './shared/ui/NavTabs'
 import { ToastProvider } from './shared/ui/ToastProvider'
 import layoutStyles from './shared/ui/Layout.module.css'
 
@@ -76,10 +77,13 @@ function AuthenticatedApp() {
     <Layout
       actions={
         <div className={layoutStyles.actions}>
-          <Link to="/practices" className={layoutStyles.navLink}>
-            <CalendarDays size={18} strokeWidth={2} aria-hidden="true" />
-            기록
-          </Link>
+          <NavTabs
+            label="화면 이동"
+            tabs={[
+              { to: '/', label: '홈' },
+              { to: '/practices', label: '기록' },
+            ]}
+          />
           <IconButton icon={LogOut} label="로그아웃" onClick={() => void handleLogout()} />
         </div>
       }

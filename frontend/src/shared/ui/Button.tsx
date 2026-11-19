@@ -37,7 +37,7 @@ export function Button({
   return (
     <button type={type} className={classes} disabled={disabled || loading} aria-busy={loading || undefined} {...props}>
       <span className={styles.label}>
-        {Icon && <Icon className={styles.icon} size={size === 'sm' ? 16 : 18} strokeWidth={2} aria-hidden="true" />}
+        {Icon && <Icon className={styles.icon} size={size === 'sm' ? 16 : 18} aria-hidden="true" />}
         {children}
       </span>
       {loading && (

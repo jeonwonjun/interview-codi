@@ -10,7 +10,7 @@ export function EmptyState({ icon: Icon, title, description, action }: EmptyStat
     <div className={styles.empty}>
       {Icon && (
         <span className={styles.icon} aria-hidden="true">
-          <Icon size={28} strokeWidth={1.75} />
+          <Icon size={28} />
         </span>
       )}
       <p className={styles.title}>{title}</p>

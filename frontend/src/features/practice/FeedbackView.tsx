@@ -1,4 +1,4 @@
-import { Lightbulb, RotateCcw } from 'lucide-react'
+import { Lightbulb, MessageSquare, RotateCcw } from 'lucide-react'
 import { Button } from '../../shared/ui/Button'
 import { Card } from '../../shared/ui/Card'
 import { Pending } from '../../shared/ui/Pending'
@@ -34,7 +34,7 @@ export function FeedbackView({ attempt, slow = false, onRetry, busy = false, ani
       (feedback.previousReview ? previousAt + revealTextDuration(feedback.previousReview) : previousAt) + STAGGER_MS
     return (
       <Card reveal={animate} aria-label="피드백">
-        <span className={styles.label}>피드백</span>
+        <FeedbackLabel done pop={animate} />
         <p className={styles.observation}>
           {animate ? <RevealText text={feedback.observation} delay={observationAt} /> : feedback.observation}
         </p>
@@ -51,7 +51,7 @@ export function FeedbackView({ attempt, slow = false, onRetry, busy = false, ani
               style={animate ? { animationDelay: `${tipAt}ms` } : undefined}
             >
               <span className={styles.tipLabel}>
-                <Lightbulb size={14} strokeWidth={2.25} aria-hidden="true" />
+                <Lightbulb size={14} aria-hidden="true" />
                 다음에 바꿔 볼 한 가지
                 {feedback.suggestionFocus && ` · ${FOCUS_LABEL[feedback.suggestionFocus]}`}
               </span>
@@ -69,12 +69,14 @@ export function FeedbackView({ attempt, slow = false, onRetry, busy = false, ani
   if (isActive(feedbackRequest)) {
     return (
       <Card>
+        <FeedbackLabel done={false} />
         <Pending>{slow ? '피드백이 오래 걸리고 있어요. 조금만 더 기다려 주세요.' : '피드백을 만들고 있어요.'}</Pending>
       </Card>
     )
   }
   return (
     <Card role="status">
+      <FeedbackLabel done={false} />
       <p className={styles.observation}>피드백을 만들지 못했어요. 답변은 그대로 저장되어 있어요.</p>
       {onRetry && (
         <div>
@@ -84,6 +86,22 @@ export function FeedbackView({ attempt, slow = false, onRetry, busy = false, ani
         </div>
       )}
     </Card>
+  )
+}
+
+/** 피드백이 도착하면 말풍선이 채워진다. 기다리거나 실패한 동안은 빈 선으로 둔다(DESIGN.md Icons). */
+function FeedbackLabel({ done, pop = false }: { done: boolean; pop?: boolean }) {
+  const iconClass = [done && styles.feedbackIconDone, done && pop && styles.feedbackIconPop].filter(Boolean).join(' ')
+  return (
+    <span className={styles.feedbackLabel}>
+      <MessageSquare
+        className={iconClass || undefined}
+        size={14}
+        fill={done ? 'currentColor' : 'none'}
+        aria-hidden="true"
+      />
+      피드백
+    </span>
   )
 }
 

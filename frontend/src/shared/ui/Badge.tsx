@@ -14,7 +14,7 @@ type BadgeProps = {
 export function Badge({ tone = 'primary', pop = false, icon: Icon, children }: BadgeProps) {
   return (
     <span className={[styles.badge, styles[tone], pop && styles.pop].filter(Boolean).join(' ')}>
-      {Icon && <Icon size={14} strokeWidth={2.25} aria-hidden="true" />}
+      {Icon && <Icon size={14} aria-hidden="true" />}
       {children}
     </span>
   )

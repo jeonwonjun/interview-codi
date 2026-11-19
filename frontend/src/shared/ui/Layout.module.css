@@ -20,7 +20,7 @@
 .actions {
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
+  gap: var(--space-sm);
 }
 
 .logo {
@@ -32,21 +32,4 @@
   max-width: var(--page-max-width);
   margin: 0 auto;
   padding: 0 var(--space-lg) var(--space-4xl);
-}
-
-.navLink {
-  font: var(--type-button-sm);
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 40px;
-  padding: var(--space-sm) var(--space-lg);
-  border-radius: var(--radius-control);
-  color: var(--color-text-secondary);
-  text-decoration: none;
-}
-
-.navLink:hover {
-  background: var(--color-border);
-  color: var(--color-text);
 }

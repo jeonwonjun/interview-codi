@@ -37,6 +37,35 @@
   color: var(--color-text-secondary);
 }
 
+.feedbackLabel {
+  font: var(--type-caption);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-secondary);
+}
+
+.feedbackIconDone {
+  color: var(--color-brand-text);
+}
+
+/* 빈 말풍선이 채워진 말풍선으로 바뀌는 순간을 배지처럼 톡 알린다. */
+.feedbackIconPop {
+  animation: iconPop 400ms var(--ease-spring) both;
+}
+
+@keyframes iconPop {
+  from {
+    transform: scale(0.6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feedbackIconPop {
+    animation: none;
+  }
+}
+
 .answerText {
   font: var(--type-body-lg);
   color: var(--color-text);
