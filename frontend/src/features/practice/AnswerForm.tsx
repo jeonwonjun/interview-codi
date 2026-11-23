@@ -15,10 +15,12 @@ type Props = {
   busy: boolean
   onSubmit: (content: string) => Promise<boolean>
   onCancel?: () => void
+  /** 취소 옆에 둘 보조 동작(말로 답하기 등). */
+  secondaryAction?: React.ReactNode
 }
 
 /** 텍스트 답변 입력. 약 1분 분량은 안내일 뿐 막지 않는다. 제출에 실패하면 입력한 내용을 지우지 않는다. */
-export function AnswerForm({ initialValue = '', submitLabel, busy, onSubmit, onCancel }: Props) {
+export function AnswerForm({ initialValue = '', submitLabel, busy, onSubmit, onCancel, secondaryAction }: Props) {
   const [content, setContent] = useState(initialValue)
   const length = [...content.trim()].length
   const inOneMinute = length >= ONE_MINUTE_MIN && length <= ONE_MINUTE_MAX
@@ -45,6 +47,7 @@ export function AnswerForm({ initialValue = '', submitLabel, busy, onSubmit, onC
           onChange={(event) => setContent(event.target.value)}
         />
         <div className={styles.formActions}>
+          {secondaryAction}
           {onCancel && (
             <Button variant="ghost" onClick={onCancel} disabled={busy}>
               취소

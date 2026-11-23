@@ -15,6 +15,10 @@ export type ErrorCode =
   | 'NOT_LATEST_REVISION'
   | 'NO_MORE_QUESTIONS'
   | 'INVALID_ANSWER_CONTENT'
+  | 'INVALID_RECORDING'
+  | 'FILE_TOO_LARGE'
+  | 'RECORDING_NOT_FOUND'
+  | 'TRANSCRIPTION_IN_PROGRESS'
   | (string & {})
 
 export class ApiError extends Error {
@@ -47,10 +51,12 @@ export function setUnauthorizedHandler(handler: (() => void) | undefined) {
 }
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  // FormData는 브라우저가 multipart 경계를 붙인 Content-Type을 직접 정한다.
+  const isForm = body instanceof FormData
   const response = await fetch(path, {
     method,
-    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    headers: body === undefined || isForm ? undefined : { 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
   })
 
   if (!response.ok) {

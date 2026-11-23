@@ -12,7 +12,8 @@ export function fakeServer(routes: Record<string, Handler | Handler[]>) {
 
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const key = `${init?.method ?? 'GET'} ${String(input)}`
-    const body = init?.body ? JSON.parse(String(init.body)) : undefined
+    // multipart(FormData)는 그대로 넘겨 테스트가 항목을 꺼내 보게 한다.
+    const body = init?.body instanceof FormData ? init.body : init?.body ? JSON.parse(String(init.body)) : undefined
     calls.push({ key, body })
     const queue = queues.get(key)
     if (!queue) {
