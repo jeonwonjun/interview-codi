@@ -10,6 +10,18 @@ export const MIN_DURATION_MS = 2_000
  */
 export const SILENCE_LEVEL = 0.02
 
+/**
+ * 녹음 음질. 지정하지 않으면 Chrome은 약 130kbps로 녹음했다(2026-11-23 실측: 43초 697KB).
+ * 말소리 인식에는 32kbps Opus면 충분하고, 저장·올리기 크기가 약 4분의 1이 된다(설계 1절 가정: 1분 240KB).
+ */
+export const AUDIO_BITS_PER_SECOND = 32_000
+
+export function recorderOptions(mimeType: string | undefined): MediaRecorderOptions {
+  return mimeType
+    ? { mimeType, audioBitsPerSecond: AUDIO_BITS_PER_SECOND }
+    : { audioBitsPerSecond: AUDIO_BITS_PER_SECOND }
+}
+
 /** 브라우저가 만들 수 있는 형식 중 서버가 받는 것. Chrome·Firefox는 webm, Safari는 mp4를 고른다. */
 const MIME_CANDIDATES = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus']
 

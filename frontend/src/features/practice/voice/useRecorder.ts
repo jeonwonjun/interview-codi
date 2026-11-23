@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { isRecordingSupported, judgeRecording, MAX_DURATION_MS, pickMimeType, type RecordingVerdict, rmsOf } from './recording'
+import {
+  isRecordingSupported,
+  judgeRecording,
+  MAX_DURATION_MS,
+  pickMimeType,
+  recorderOptions,
+  type RecordingVerdict,
+  rmsOf,
+} from './recording'
 
 export type RecordedAudio = {
   blob: Blob
@@ -106,7 +114,7 @@ export function useRecorder() {
     }
 
     const mimeType = pickMimeType((type) => MediaRecorder.isTypeSupported(type))
-    const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+    const recorder = new MediaRecorder(stream, recorderOptions(mimeType))
     const context = new AudioContext()
     const analyser = context.createAnalyser()
     analyser.fftSize = 2048
