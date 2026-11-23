@@ -4,8 +4,10 @@ import io.interviewcodi.backend.practice.domain.AiRequestKind;
 import io.interviewcodi.backend.practice.domain.AiRequestStatus;
 import io.interviewcodi.backend.practice.domain.DiscardReason;
 import java.time.Duration;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -148,6 +150,11 @@ public class AiRequestRepository {
      * 임대가 끝난 RUNNING(처리하던 워커가 죽은 경우)도 다시 꺼낸다.
      */
     public Optional<ClaimedRequest> claimNext(UUID leaseToken, Duration lease) {
+        return claimNext(leaseToken, lease, EnumSet.allOf(AiRequestKind.class));
+    }
+
+    /** {@code kinds}에 든 종류만 꺼낸다. 인식 전용 슬롯처럼 종류별로 처리 몫을 떼어 둘 때 쓴다. */
+    public Optional<ClaimedRequest> claimNext(UUID leaseToken, Duration lease, Set<AiRequestKind> kinds) {
         return jdbcClient.sql("""
                         update ai_requests
                         set status = 'RUNNING', attempt_count = attempt_count + 1, lease_token = :leaseToken,
@@ -156,8 +163,9 @@ public class AiRequestRepository {
                         where id = (
                             select id
                             from ai_requests
-                            where (status = 'PENDING' and available_at <= now())
-                               or (status = 'RUNNING' and lease_until < now())
+                            where kind in (:kinds)
+                              and ((status = 'PENDING' and available_at <= now())
+                                or (status = 'RUNNING' and lease_until < now()))
                             order by id
                             limit 1
                             for update skip locked)
@@ -165,6 +173,7 @@ public class AiRequestRepository {
                         """)
                 .param("leaseToken", leaseToken)
                 .param("leaseSeconds", lease.toSeconds())
+                .param("kinds", kinds.stream().map(Enum::name).toList())
                 .query(ClaimedRequest.class)
                 .optional();
     }

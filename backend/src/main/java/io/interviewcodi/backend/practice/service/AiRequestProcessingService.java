@@ -17,7 +17,9 @@ import io.interviewcodi.backend.practice.service.AiRequestQueueService.Claim;
 import io.interviewcodi.backend.practice.service.AiRequestQueueService.Outcome;
 import io.interviewcodi.backend.practice.storage.RecordingStorage;
 import java.io.IOException;
+import java.util.EnumSet;
 import java.util.Optional;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -56,7 +58,12 @@ public class AiRequestProcessingService {
      * @return 요청 하나를 꺼냈으면 true(결과와 상관없이). 꺼낼 것이 없으면 false
      */
     public boolean processNext() {
-        Optional<Claim> claim = queue.claim();
+        return processNext(EnumSet.allOf(AiRequestKind.class));
+    }
+
+    /** {@code kinds}에 든 종류만 꺼내 처리한다. 인식 전용 슬롯이 쓴다. */
+    public boolean processNext(Set<AiRequestKind> kinds) {
+        Optional<Claim> claim = queue.claim(kinds);
         if (claim.isEmpty()) {
             return false;
         }

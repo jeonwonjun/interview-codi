@@ -1,7 +1,10 @@
 package io.interviewcodi.backend.practice.worker;
 
+import io.interviewcodi.backend.practice.domain.AiRequestKind;
 import io.interviewcodi.backend.practice.service.AiRequestProcessingService;
 import java.time.Duration;
+import java.util.EnumSet;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -18,6 +21,9 @@ import org.springframework.stereotype.Component;
  * {@code poll-interval}만큼 쉰다. 여러 슬롯·서버가 함께 돌아도 {@code SKIP LOCKED} 덕분에 같은 요청을 동시에
  * 처리하지 않는다.
  * <p>
+ * {@code transcribe-slots}만큼은 인식(TRANSCRIBE)만 꺼내는 슬롯을 따로 둔다. 공용 슬롯은 모든 종류를 꺼내므로,
+ * 인식 전용 슬롯은 인식에 떼어 둔 최소 몫이다(설계 5-2의 B안).
+ * <p>
  * 이전 구현(2026-11-19 기준선 측정에서 발견)은 주기마다 슬롯을 띄우고 큐가 비면 끝냈다. 다음 주기는 앞선 슬롯이
  * 모두 끝나야 시작했기 때문에, 요청이 한 건씩 들어오면 한 슬롯만 남아 큐를 비웠고 실제 동시 처리는 1이었다.
  * <p>
@@ -32,18 +38,23 @@ class AiRequestWorker implements SmartLifecycle {
     private static final Duration SHUTDOWN_GRACE = Duration.ofSeconds(30);
 
     private static final Logger log = LoggerFactory.getLogger(AiRequestWorker.class);
+    private static final Set<AiRequestKind> ALL_KINDS = EnumSet.allOf(AiRequestKind.class);
+    private static final Set<AiRequestKind> TRANSCRIBE_ONLY = EnumSet.of(AiRequestKind.TRANSCRIBE);
 
     private final AiRequestProcessingService processor;
     private final int concurrency;
+    private final int transcribeSlots;
     private final Duration pollInterval;
     private final AtomicBoolean running = new AtomicBoolean();
     private ExecutorService slots;
 
     AiRequestWorker(AiRequestProcessingService processor,
                     @Value("${practice.ai.worker.concurrency:10}") int concurrency,
+                    @Value("${practice.ai.worker.transcribe-slots:0}") int transcribeSlots,
                     @Value("${practice.ai.worker.poll-interval:1s}") Duration pollInterval) {
         this.processor = processor;
         this.concurrency = concurrency;
+        this.transcribeSlots = transcribeSlots;
         this.pollInterval = pollInterval;
     }
 
@@ -54,15 +65,19 @@ class AiRequestWorker implements SmartLifecycle {
         }
         slots = Executors.newVirtualThreadPerTaskExecutor();
         for (int i = 0; i < concurrency; i++) {
-            slots.submit(this::runSlot);
+            slots.submit(() -> runSlot(ALL_KINDS));
         }
-        log.info("AI request worker started with {} slots", concurrency);
+        for (int i = 0; i < transcribeSlots; i++) {
+            slots.submit(() -> runSlot(TRANSCRIBE_ONLY));
+        }
+        log.info("AI request worker started with {} shared slots and {} transcribe-only slots", concurrency,
+                transcribeSlots);
     }
 
-    private void runSlot() {
+    private void runSlot(Set<AiRequestKind> kinds) {
         while (running.get()) {
             try {
-                if (!processor.processNext()) {
+                if (!processor.processNext(kinds)) {
                     Thread.sleep(pollInterval);
                 }
             } catch (InterruptedException ex) {
