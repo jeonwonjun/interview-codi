@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatClock, judgeRecording, pickMimeType, rmsOf } from './recording'
+import { formatClock, judgeRecording, pickMimeType, recorderOptions, rmsOf } from './recording'
 
 describe('녹음 규칙', () => {
   it('2초보다 짧은 녹음은 올리지 않는다', () => {
@@ -22,5 +22,13 @@ describe('녹음 규칙', () => {
     expect(rmsOf(new Float32Array())).toBe(0)
     expect(formatClock(42_900)).toBe('0:42')
     expect(formatClock(180_000)).toBe('3:00')
+  })
+
+  it('녹음 음질을 32kbps로 지정한다', () => {
+    expect(recorderOptions('audio/webm;codecs=opus')).toEqual({
+      mimeType: 'audio/webm;codecs=opus',
+      audioBitsPerSecond: 32_000,
+    })
+    expect(recorderOptions(undefined)).toEqual({ audioBitsPerSecond: 32_000 })
   })
 })
