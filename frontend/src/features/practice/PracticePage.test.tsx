@@ -35,9 +35,12 @@ function attempt(overrides: Partial<AnswerAttempt> = {}): AnswerAttempt {
     id: 100,
     questionId: 10,
     attemptNo: 1,
+    inputMode: 'TEXT',
     currentRevision: { id: 1000, revisionNo: 1, content: '예약 기능을 맡았습니다.' },
     feedback: null,
     feedbackRequest: { id: 500, status: 'PENDING' },
+    recording: null,
+    transcriptionRequest: null,
     ...overrides,
   }
 }
@@ -176,5 +179,76 @@ describe('연습 화면', () => {
       baseRevisionNo: 1,
       content: '고친 답변',
     })
+  })
+})
+
+function voiceAttempt(overrides: Partial<AnswerAttempt> = {}): AnswerAttempt {
+  return attempt({
+    inputMode: 'VOICE',
+    currentRevision: null,
+    feedbackRequest: null,
+    recording: { id: 900, durationMs: 62_000 },
+    transcriptionRequest: { id: 700, status: 'PENDING' },
+    ...overrides,
+  })
+}
+
+describe('음성 답변', () => {
+  it('녹음을 글로 옮기는 동안 기다림을 보여 주고, 끝나면 옮긴 문구와 고치기를 보여 준다', async () => {
+    const transcribed = voiceAttempt({
+      currentRevision: { id: 1000, revisionNo: 1, content: '레디스로 캐시를 붙였습니다.' },
+      feedbackRequest: { id: 500, status: 'PENDING' },
+      transcriptionRequest: { id: 700, status: 'SUCCEEDED' },
+    })
+    const server = fakeServer({
+      'GET /api/practices/1': [ok(practiceWith([voiceAttempt()])), ok(practiceWith([transcribed]))],
+      'GET /api/ai-requests/700': [ok({ id: 700, status: 'RUNNING' }), ok({ id: 700, status: 'SUCCEEDED' })],
+      'GET /api/ai-requests/500': ok({ id: 500, status: 'PENDING' }),
+    })
+    renderPage()
+
+    expect(await screen.findByText('녹음을 글로 옮기고 있어요.')).toBeTruthy()
+    expect(screen.getByLabelText('내 녹음').getAttribute('src')).toBe('/api/answers/100/recording')
+
+    expect(await screen.findByText('레디스로 캐시를 붙였습니다.', {}, { timeout: 5_000 })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '글로 옮긴 문구 고치기' })).toBeTruthy()
+    expect(server.calls.filter((call) => call.key === 'GET /api/ai-requests/700')).toHaveLength(2)
+  })
+
+  it('글로 옮기지 못했으면 녹음을 지우지 않고 다시 옮기거나 글로 답하게 한다', async () => {
+    const failed = voiceAttempt({ transcriptionRequest: { id: 700, status: 'FAILED' } })
+    const server = fakeServer({
+      'GET /api/practices/1': ok(practiceWith([failed])),
+      'POST /api/recordings/900/transcriptions': () => ({ status: 201, body: { id: 701, status: 'PENDING' } }),
+    })
+    renderPage()
+
+    expect(await screen.findByText(/녹음을 글로 옮기지 못했어요/)).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: '다시 글로 옮기기' }))
+    await waitFor(() =>
+      expect(server.calls.some((call) => call.key === 'POST /api/recordings/900/transcriptions')).toBe(true),
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: '글로 답하기' }))
+    expect(screen.getByLabelText('내 답변')).toBeTruthy()
+  })
+
+  it('녹음할 수 있는 브라우저에서는 말로 답하기가 먼저 나오고, 마이크를 거부하면 같은 질문에서 글로 답하게 바꾼다', async () => {
+    vi.stubGlobal('MediaRecorder', class {})
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      mediaDevices: {
+        getUserMedia: () => Promise.reject(new DOMException('denied', 'NotAllowedError')),
+      },
+    })
+    fakeServer({ 'GET /api/practices/1': ok(practiceWith([])) })
+    renderPage()
+
+    await userEvent.click(await screen.findByRole('button', { name: '녹음 시작' }))
+
+    expect(await screen.findByText(/마이크 사용이 허락되지 않아 글로 답하도록 바꿨어요/)).toBeTruthy()
+    expect(screen.getByLabelText('내 답변')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: '최근 프로젝트에서 본인이 맡은 기능 하나를 설명해 주세요.' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '말로 답하기' })).toBeTruthy()
   })
 })

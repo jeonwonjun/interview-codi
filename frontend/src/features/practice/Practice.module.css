@@ -21,6 +21,14 @@
   padding: var(--space-2xl);
 }
 
+.questionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  min-height: 28px;
+}
+
 .badgeRow {
   display: flex;
   flex-wrap: wrap;
@@ -131,6 +139,7 @@
 
 .formActions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--space-sm);
 }

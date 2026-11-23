@@ -1,5 +1,17 @@
 import { useCallback, useRef, useState } from 'react'
-import { ChevronRight, CornerDownRight, Flag, MessageCirclePlus, Pencil, RotateCcw, SkipForward } from 'lucide-react'
+import {
+  ChevronRight,
+  CornerDownRight,
+  Flag,
+  Keyboard,
+  MessageCirclePlus,
+  Mic,
+  Pencil,
+  RotateCcw,
+  SkipForward,
+  Volume2,
+  VolumeX,
+} from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { ApiError } from '../../shared/api/client'
 import { PageColumns } from '../../shared/ui/AppShell'
@@ -7,15 +19,29 @@ import { Badge } from '../../shared/ui/Badge'
 import { Button } from '../../shared/ui/Button'
 import { Card } from '../../shared/ui/Card'
 import { ErrorBanner } from '../../shared/ui/ErrorBanner'
+import { IconButton } from '../../shared/ui/IconButton'
 import { Pending } from '../../shared/ui/Pending'
 import { AnswerForm } from './AnswerForm'
 import { FeedbackView } from './FeedbackView'
 import { formatDateTime } from './labels'
 import { PracticeAside } from './PracticeAside'
-import { type AnswerAttempt, isActive, type Practice, practiceApi, type Question } from './practiceApi'
+import {
+  type AnswerAttempt,
+  hasRevision,
+  isActive,
+  type Practice,
+  practiceApi,
+  type Question,
+  type TranscribedAttempt,
+} from './practiceApi'
 import styles from './Practice.module.css'
 import { useAiRequestPolling } from './useAiRequestPolling'
 import { usePractice } from './usePractice'
+import { isRecordingSupported } from './voice/recording'
+import { RecordingPlayer } from './voice/RecordingPlayer'
+import { useQuestionSpeech } from './voice/useQuestionSpeech'
+import type { RecordedAudio } from './voice/useRecorder'
+import { VoiceAnswer } from './voice/VoiceAnswer'
 
 export function PracticePage() {
   const { practiceId } = useParams()
@@ -56,11 +82,12 @@ export function PracticeScreen({ practiceId }: { practiceId: number }) {
 }
 
 type Mode = 'view' | 'reanswer' | 'edit'
+type InputMode = 'voice' | 'text'
 
 /** 오류 코드별 안내. 그 밖의 오류는 서버가 준 문구를 쓴다. */
 function messageOf(error: unknown): string {
   if (!(error instanceof ApiError)) {
-    return '서버에 연결하지 못했어요. 입력한 내용은 그대로 있어요. 잠시 후 다시 시도해 주세요.'
+    return '서버에 연결하지 못했어요. 답변은 그대로 있어요. 잠시 후 다시 시도해 주세요.'
   }
   switch (error.code) {
     case 'REVISION_CONFLICT':
@@ -72,9 +99,17 @@ function messageOf(error: unknown): string {
   }
 }
 
+const UNAVAILABLE_MESSAGE = {
+  denied: '마이크 사용이 허락되지 않아 글로 답하도록 바꿨어요. 브라우저 설정에서 허락하면 다시 말로 답할 수 있어요.',
+  'no-device': '마이크를 찾지 못해 글로 답하도록 바꿨어요.',
+  unsupported: '이 브라우저에서는 녹음할 수 없어 글로 답하도록 바꿨어요.',
+} as const
+
 function InProgressView({ practice, reload }: { practice: Practice; reload: () => Promise<void> }) {
   const navigate = useNavigate()
   const [mode, setMode] = useState<Mode>('view')
+  // 음성이 기본이고 텍스트는 대체 수단이다(기획 3절). 녹음할 수 없는 브라우저는 처음부터 글로 답한다.
+  const [inputMode, setInputMode] = useState<InputMode>(() => (isRecordingSupported() ? 'voice' : 'text'))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // 같은 제출을 다시 보낼 때(네트워크 오류 등) 같은 값을 써서 서버가 한 번만 저장하게 한다.
@@ -83,19 +118,23 @@ function InProgressView({ practice, reload }: { practice: Practice; reload: () =
   const current = practice.questions.find((question) => question.current) ?? practice.questions.at(-1)!
   const previous = practice.questions.filter((question) => question.id !== current.id)
   const latest = current.attempts.at(-1)
+  const transcribed = hasRevision(latest)
+  const transcribing = latest != null && !transcribed && isActive(latest.transcriptionRequest)
   const followUpPending = isActive(practice.followUpRequest)
+  const speech = useQuestionSpeech(current.content)
   // 이 화면에서 기다리던 피드백만 도착할 때 순서대로 보여 준다. 새로 열었을 때 이미 있던 피드백은 바로 보여 준다.
   const [awaitedRevisionId, setAwaitedRevisionId] = useState<number | null>(null)
-  const pendingRevisionId = latest && isActive(latest.feedbackRequest) ? latest.currentRevision.id : null
+  const pendingRevisionId = transcribed && isActive(latest.feedbackRequest) ? latest.currentRevision.id : null
   if (pendingRevisionId != null && pendingRevisionId !== awaitedRevisionId) {
     setAwaitedRevisionId(pendingRevisionId)
   }
 
-  const onFeedbackFinished = useCallback(() => void reload(), [reload])
+  const onRequestFinished = useCallback(() => void reload(), [reload])
   const feedback = useAiRequestPolling(
-    latest && isActive(latest.feedbackRequest) ? latest.feedbackRequest.id : null,
-    onFeedbackFinished,
+    transcribed && isActive(latest.feedbackRequest) ? latest.feedbackRequest.id : null,
+    onRequestFinished,
   )
+  const transcription = useAiRequestPolling(transcribing ? latest.transcriptionRequest!.id : null, onRequestFinished)
   const onFollowUpFinished = useCallback(
     (detail: { status: string }) => {
       if (detail.status !== 'SUCCEEDED') {
@@ -106,6 +145,11 @@ function InProgressView({ practice, reload }: { practice: Practice; reload: () =
     [reload],
   )
   const followUp = useAiRequestPolling(followUpPending ? practice.followUpRequest!.id : null, onFollowUpFinished)
+
+  const onMicUnavailable = useCallback((reason: keyof typeof UNAVAILABLE_MESSAGE) => {
+    setInputMode('text')
+    setError(UNAVAILABLE_MESSAGE[reason])
+  }, [])
 
   /** 요청 하나를 실행하고 상세를 다시 읽는다. 409·404 등은 안내 문구로 바꾼다. */
   const run = async (action: () => Promise<unknown>): Promise<boolean> => {
@@ -123,8 +167,7 @@ function InProgressView({ practice, reload }: { practice: Practice; reload: () =
     }
   }
 
-  const submit = async (content: string) => {
-    const succeeded = await run(() => practiceApi.submitAnswer(current.id, clientRequestId.current, content))
+  const afterSubmit = (succeeded: boolean) => {
     if (succeeded) {
       clientRequestId.current = crypto.randomUUID()
       setMode('view')
@@ -132,7 +175,15 @@ function InProgressView({ practice, reload }: { practice: Practice; reload: () =
     return succeeded
   }
 
-  const revise = async (attempt: AnswerAttempt, content: string) => {
+  const submitText = async (content: string) =>
+    afterSubmit(await run(() => practiceApi.submitAnswer(current.id, clientRequestId.current, content)))
+
+  const submitVoice = async (audio: RecordedAudio) =>
+    afterSubmit(
+      await run(() => practiceApi.submitVoice(current.id, clientRequestId.current, audio.blob, audio.durationMs)),
+    )
+
+  const revise = async (attempt: TranscribedAttempt, content: string) => {
     const succeeded = await run(() =>
       practiceApi.revise(attempt.id, attempt.currentRevision.revisionNo, content),
     )
@@ -146,25 +197,42 @@ function InProgressView({ practice, reload }: { practice: Practice; reload: () =
     }
   }
 
+  const answerAgain = (next: InputMode) => {
+    setInputMode(next)
+    setMode('reanswer')
+  }
+
   const showForm = !latest || mode === 'reanswer'
-  const feedbackReady = latest?.feedback != null
+  const feedbackReady = transcribed && latest.feedback != null
+  const submitLabel = latest ? '다시 답하기' : '답변 제출'
+  const cancel = latest ? () => setMode('view') : undefined
 
   return (
     <div className={styles.page}>
       {previous.length > 0 && <PreviousQuestions questions={previous} />}
 
       <Card key={current.id} reveal className={styles.questionCard} aria-label="현재 질문">
-        <div className={styles.badgeRow}>
-          <Badge>질문 {current.orderNo}</Badge>
-          {current.sourceKind === 'FOLLOW_UP' && (
-            <Badge tone="neutral" icon={CornerDownRight}>
-              이어진 질문
-            </Badge>
-          )}
-          {latest && (
-            <Badge key={latest.attemptNo} tone="neutral" pop>
-              {latest.attemptNo}번째 답변
-            </Badge>
+        <div className={styles.questionHead}>
+          <div className={styles.badgeRow}>
+            <Badge>질문 {current.orderNo}</Badge>
+            {current.sourceKind === 'FOLLOW_UP' && (
+              <Badge tone="neutral" icon={CornerDownRight}>
+                이어진 질문
+              </Badge>
+            )}
+            {latest && (
+              <Badge key={latest.attemptNo} tone="neutral" pop>
+                {latest.attemptNo}번째 답변
+              </Badge>
+            )}
+          </div>
+          {speech.available && (
+            <IconButton
+              icon={speech.enabled ? Volume2 : VolumeX}
+              label={speech.enabled ? '질문 읽어 주기 끄기' : '질문 읽어 주기 켜기'}
+              aria-pressed={speech.enabled}
+              onClick={speech.toggle}
+            />
           )}
         </div>
         <h1 className={styles.question}>{current.content}</h1>
@@ -173,13 +241,32 @@ function InProgressView({ practice, reload }: { practice: Practice; reload: () =
       {error && <ErrorBanner>{error}</ErrorBanner>}
 
       {showForm ? (
-        <AnswerForm
-          submitLabel={latest ? '다시 답하기' : '답변 제출'}
-          busy={busy}
-          onSubmit={submit}
-          onCancel={latest ? () => setMode('view') : undefined}
-        />
-      ) : mode === 'edit' ? (
+        inputMode === 'voice' ? (
+          <VoiceAnswer
+            submitLabel="이 녹음 제출"
+            busy={busy}
+            onSubmit={submitVoice}
+            onUseText={() => setInputMode('text')}
+            onUnavailable={onMicUnavailable}
+            onRecordingStart={speech.stop}
+            onCancel={cancel}
+          />
+        ) : (
+          <AnswerForm
+            submitLabel={submitLabel}
+            busy={busy}
+            onSubmit={submitText}
+            onCancel={cancel}
+            secondaryAction={
+              isRecordingSupported() && (
+                <Button variant="ghost" icon={Mic} onClick={() => setInputMode('voice')} disabled={busy}>
+                  말로 답하기
+                </Button>
+              )
+            }
+          />
+        )
+      ) : mode === 'edit' && transcribed ? (
         <AnswerForm
           initialValue={latest.currentRevision.content}
           submitLabel="고친 답변으로 피드백 받기"
@@ -187,10 +274,11 @@ function InProgressView({ practice, reload }: { practice: Practice; reload: () =
           onSubmit={(content) => revise(latest, content)}
           onCancel={() => setMode('view')}
         />
-      ) : (
+      ) : transcribed ? (
         <>
           <Card aria-label="내 답변">
-            <span className={styles.label}>내 답변</span>
+            <span className={styles.label}>{latest.inputMode === 'VOICE' ? '내 답변 · 녹음을 글로 옮긴 문구' : '내 답변'}</span>
+            {latest.recording && <RecordingPlayer answerId={latest.id} durationMs={latest.recording.durationMs} />}
             <p className={styles.answerText}>{latest.currentRevision.content}</p>
             <div className={styles.secondaryActions}>
               <Button
@@ -200,7 +288,7 @@ function InProgressView({ practice, reload }: { practice: Practice; reload: () =
                 onClick={() => setMode('edit')}
                 disabled={busy || followUpPending}
               >
-                답변 고치기
+                {latest.inputMode === 'VOICE' ? '글로 옮긴 문구 고치기' : '답변 고치기'}
               </Button>
             </div>
           </Card>
@@ -212,6 +300,17 @@ function InProgressView({ practice, reload }: { practice: Practice; reload: () =
             onRetry={() => void run(() => practiceApi.retryFeedback(latest.currentRevision.id))}
           />
         </>
+      ) : (
+        latest && (
+          <TranscriptionStatus
+            attempt={latest}
+            active={transcribing}
+            slow={transcription.slow}
+            busy={busy}
+            onRetry={() => void run(() => practiceApi.retryTranscription(latest.recording!.id))}
+            onAnswerAgain={answerAgain}
+          />
+        )
       )}
 
       {followUpPending && (
@@ -220,22 +319,18 @@ function InProgressView({ practice, reload }: { practice: Practice; reload: () =
         </Card>
       )}
 
-      {!showForm && mode === 'view' && (
+      {!showForm && mode === 'view' && feedbackReady && !followUpPending && (
         <div className={styles.actions}>
-          {feedbackReady && !followUpPending && (
-            <Button
-              icon={MessageCirclePlus}
-              onClick={() => void run(() => practiceApi.requestFollowUp(practice.id, latest.currentRevision.id))}
-              disabled={busy}
-            >
-              이어서 질문 받기
-            </Button>
-          )}
-          {feedbackReady && !followUpPending && (
-            <Button variant="secondary" icon={RotateCcw} onClick={() => setMode('reanswer')} disabled={busy}>
-              다시 답하기
-            </Button>
-          )}
+          <Button
+            icon={MessageCirclePlus}
+            onClick={() => void run(() => practiceApi.requestFollowUp(practice.id, latest.currentRevision.id))}
+            disabled={busy}
+          >
+            이어서 질문 받기
+          </Button>
+          <Button variant="secondary" icon={RotateCcw} onClick={() => setMode('reanswer')} disabled={busy}>
+            다시 답하기
+          </Button>
         </div>
       )}
 
@@ -256,6 +351,52 @@ function InProgressView({ practice, reload }: { practice: Practice; reload: () =
         </Button>
       </div>
     </div>
+  )
+}
+
+/**
+ * 글로 옮기는 중이거나 옮기지 못한 음성 시도. 옮기지 못했어도 녹음은 남아 있어 다시 녹음하라고 요구하지 않는다(기획 7절).
+ */
+function TranscriptionStatus({
+  attempt,
+  active,
+  slow,
+  busy,
+  onRetry,
+  onAnswerAgain,
+}: {
+  attempt: AnswerAttempt
+  active: boolean
+  slow: boolean
+  busy: boolean
+  onRetry: () => void
+  onAnswerAgain: (inputMode: InputMode) => void
+}) {
+  return (
+    <Card aria-label="내 답변">
+      <span className={styles.label}>내 답변</span>
+      {attempt.recording && <RecordingPlayer answerId={attempt.id} durationMs={attempt.recording.durationMs} />}
+      {active ? (
+        <Pending>{slow ? '글로 옮기는 데 오래 걸리고 있어요.' : '녹음을 글로 옮기고 있어요.'}</Pending>
+      ) : (
+        <>
+          <p className={styles.observation}>녹음을 글로 옮기지 못했어요. 녹음은 그대로 남아 있어요.</p>
+          <div className={styles.actions}>
+            {attempt.recording && (
+              <Button icon={RotateCcw} onClick={onRetry} loading={busy}>
+                다시 글로 옮기기
+              </Button>
+            )}
+            <Button variant="secondary" icon={Mic} onClick={() => onAnswerAgain('voice')} disabled={busy}>
+              다시 녹음하기
+            </Button>
+            <Button variant="ghost" icon={Keyboard} onClick={() => onAnswerAgain('text')} disabled={busy}>
+              글로 답하기
+            </Button>
+          </div>
+        </>
+      )}
+    </Card>
   )
 }
 
@@ -300,10 +441,18 @@ function RecordView({ practice }: { practice: Practice }) {
             <div key={attempt.id} className={styles.attempt}>
               <span className={styles.label}>
                 {attempt.attemptNo}번째 답변
-                {attempt.currentRevision.revisionNo > 1 && ' · 고친 답변'}
+                {attempt.inputMode === 'VOICE' && ' · 음성'}
+                {hasRevision(attempt) && attempt.currentRevision.revisionNo > 1 && ' · 고친 답변'}
               </span>
-              <p className={styles.answerText}>{attempt.currentRevision.content}</p>
-              <FeedbackView attempt={attempt} />
+              {attempt.recording && <RecordingPlayer answerId={attempt.id} durationMs={attempt.recording.durationMs} />}
+              {hasRevision(attempt) ? (
+                <>
+                  <p className={styles.answerText}>{attempt.currentRevision.content}</p>
+                  <FeedbackView attempt={attempt} />
+                </>
+              ) : (
+                <p className={styles.caption}>글로 옮기지 못한 녹음이에요.</p>
+              )}
             </div>
           ))}
         </Card>

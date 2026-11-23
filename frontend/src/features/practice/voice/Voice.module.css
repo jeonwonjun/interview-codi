@@ -1,0 +1,212 @@
+.recorder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-lg) 0 var(--space-sm);
+  text-align: center;
+}
+
+/* 녹음 버튼은 완전한 원형(DESIGN.md). 대기는 브랜드색, 녹음 중은 녹음 색으로 바뀌고 숨 쉬듯 퍼진다. */
+.recordButton {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-brand);
+  color: var(--color-on-brand);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.recordButton:hover:not(:disabled) {
+  background: var(--color-brand-hover);
+}
+
+.recordButton:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.recordButton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.recordButton:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+.recording,
+.recording:hover:not(:disabled) {
+  background: var(--color-alert);
+}
+
+.recording::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 0 0 var(--color-alert);
+  animation: ripple 1600ms var(--ease-out) infinite;
+}
+
+@keyframes ripple {
+  from {
+    box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.35);
+  }
+  to {
+    box-shadow: 0 0 0 16px rgba(225, 29, 72, 0);
+  }
+}
+
+.meter {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 20px;
+}
+
+.bar {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--color-border);
+  transition: height var(--duration-fast) var(--ease-out);
+}
+
+.bar:nth-child(2),
+.bar:nth-child(4) {
+  height: 12px;
+}
+
+.bar:nth-child(3) {
+  height: 20px;
+}
+
+.barOn {
+  background: var(--color-alert);
+}
+
+.clock {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font: var(--type-title);
+  font-variant-numeric: tabular-nums;
+}
+
+.clockLimit {
+  font: var(--type-caption);
+  color: var(--color-text-secondary);
+}
+
+.recDot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-alert);
+  animation: blink 1200ms var(--ease-in-out) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.hint {
+  font: var(--type-body);
+  color: var(--color-text-secondary);
+}
+
+.problem {
+  font: var(--type-body-strong);
+  color: var(--color-text);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-sm);
+}
+
+.review {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.reviewActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.minorActions,
+.mainActions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+/* 좁은 화면에서는 주요 버튼 두 개를 한 줄에 나눠 채우고, 보조 버튼은 그 위에 둔다. */
+@media (max-width: 479px) {
+  .mainActions {
+    width: 100%;
+  }
+
+  .mainActions > * {
+    flex: 1;
+  }
+}
+
+.label {
+  font: var(--type-caption);
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.player {
+  width: 100%;
+  height: 40px;
+}
+
+.saved {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.saved .player {
+  flex: 1;
+  min-width: 0;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recording::after,
+  .recDot {
+    animation: none;
+  }
+
+  .recordButton {
+    transition: none;
+  }
+}
