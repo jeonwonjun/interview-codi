@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import { ChevronRight, CornerDownRight, Flag, MessageCirclePlus, Pencil, RotateCcw, SkipForward } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { ApiError } from '../../shared/api/client'
+import { PageColumns } from '../../shared/ui/AppShell'
 import { Badge } from '../../shared/ui/Badge'
 import { Button } from '../../shared/ui/Button'
 import { Card } from '../../shared/ui/Card'
@@ -10,6 +11,7 @@ import { Pending } from '../../shared/ui/Pending'
 import { AnswerForm } from './AnswerForm'
 import { FeedbackView } from './FeedbackView'
 import { formatDateTime } from './labels'
+import { PracticeAside } from './PracticeAside'
 import { type AnswerAttempt, isActive, type Practice, practiceApi, type Question } from './practiceApi'
 import styles from './Practice.module.css'
 import { useAiRequestPolling } from './useAiRequestPolling'
@@ -17,7 +19,12 @@ import { usePractice } from './usePractice'
 
 export function PracticePage() {
   const { practiceId } = useParams()
-  const { state, reload } = usePractice(Number(practiceId))
+  return <PracticeScreen key={practiceId} practiceId={Number(practiceId)} />
+}
+
+/** 연습 하나의 화면. 진행 중이면 답하는 화면, 마쳤으면 기록 화면이다. 첫 화면도 이 화면을 그대로 쓴다. */
+export function PracticeScreen({ practiceId }: { practiceId: number }) {
+  const { state, reload } = usePractice(practiceId)
 
   if (state.status === 'loading') {
     return null
@@ -37,10 +44,14 @@ export function PracticePage() {
       </div>
     )
   }
-  return state.practice.canProceed ? (
-    <InProgressView practice={state.practice} reload={reload} />
-  ) : (
-    <RecordView practice={state.practice} />
+  return (
+    <PageColumns aside={<PracticeAside practice={state.practice} />}>
+      {state.practice.canProceed ? (
+        <InProgressView practice={state.practice} reload={reload} />
+      ) : (
+        <RecordView practice={state.practice} />
+      )}
+    </PageColumns>
   )
 }
 

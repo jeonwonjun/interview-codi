@@ -219,3 +219,10 @@ details[open] .previous {
     padding: var(--space-card-mobile);
   }
 }
+
+/* 웹에서는 오른쪽 칸이 이번 연습의 질문을 보여 주므로 접은 목록을 숨긴다. */
+@media (min-width: 1024px) {
+  .previousCard {
+    display: none;
+  }
+}

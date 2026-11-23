@@ -62,7 +62,15 @@ public class PracticeRepository {
         return jdbcClient.sql("""
                         select p.id, p.start_mode, p.status, p.created_at, p.completed_at,
                                (select count(*) from questions q
-                                where q.practice_id = p.id and q.deleted_at is null) as question_count
+                                where q.practice_id = p.id and q.deleted_at is null) as question_count,
+                               (select count(*) from answers a
+                                join questions q on q.id = a.question_id
+                                where q.practice_id = p.id and q.deleted_at is null and a.deleted_at is null)
+                                       as answer_count,
+                               (select max(a.created_at) from answers a
+                                join questions q on q.id = a.question_id
+                                where q.practice_id = p.id and q.deleted_at is null and a.deleted_at is null)
+                                       as last_answered_at
                         from practices p
                         where p.user_id = :userId and p.deleted_at is null
                         order by p.created_at desc, p.id desc
@@ -110,7 +118,8 @@ public class PracticeRepository {
     }
 
     public record PracticeSummaryRow(long id, StartMode startMode, PracticeStatus status, OffsetDateTime createdAt,
-                              OffsetDateTime completedAt, int questionCount) {
+                              OffsetDateTime completedAt, int questionCount, int answerCount,
+                              OffsetDateTime lastAnsweredAt) {
     }
 
     public record LockedPractice(PracticeStatus status, boolean deleted) {

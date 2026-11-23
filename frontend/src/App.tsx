@@ -1,18 +1,16 @@
 import { useEffect, useState } from 'react'
-import { LogOut } from 'lucide-react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
+import { MyPage } from './features/account/MyPage'
 import { LoginPage } from './features/auth/LoginPage'
 import { useAuth } from './features/auth/useAuth'
 import { HistoryPage } from './features/history/HistoryPage'
 import { HomePage } from './features/home/HomePage'
 import { PracticePage } from './features/practice/PracticePage'
 import { setUnauthorizedHandler } from './shared/api/client'
+import { AppShell } from './shared/ui/AppShell'
 import { ErrorBanner } from './shared/ui/ErrorBanner'
-import { IconButton } from './shared/ui/IconButton'
 import { Layout } from './shared/ui/Layout'
-import { NavTabs } from './shared/ui/NavTabs'
 import { ToastProvider } from './shared/ui/ToastProvider'
-import layoutStyles from './shared/ui/Layout.module.css'
 
 /** 백엔드가 로그인 실패 시 "/?login=error"로 돌려보낸다. 한 번 보여 준 뒤 주소에서 지운다. */
 function consumeLoginError(): boolean {
@@ -73,28 +71,17 @@ function AuthenticatedApp() {
       </Layout>
     )
   }
+  const logoutAction = () => void handleLogout()
   return (
-    <Layout
-      actions={
-        <div className={layoutStyles.actions}>
-          <NavTabs
-            label="화면 이동"
-            tabs={[
-              { to: '/', label: '홈' },
-              { to: '/practices', label: '기록' },
-            ]}
-          />
-          <IconButton icon={LogOut} label="로그아웃" onClick={() => void handleLogout()} />
-        </div>
-      }
-    >
+    <AppShell onLogout={logoutAction}>
       {logoutFailed && <ErrorBanner>로그아웃하지 못했어요. 다시 시도해 주세요.</ErrorBanner>}
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/practices" element={<HistoryPage />} />
         <Route path="/practices/:practiceId" element={<PracticePage />} />
+        <Route path="/me" element={<MyPage onLogout={logoutAction} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </Layout>
+    </AppShell>
   )
 }

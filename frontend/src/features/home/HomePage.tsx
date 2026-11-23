@@ -1,42 +1,44 @@
-import { useEffect, useState } from 'react'
-import { ChevronRight, FileText, MessageSquareText } from 'lucide-react'
-import { Link, useNavigate } from 'react-router'
+import { useState } from 'react'
+import { FileText, MessageSquareText } from 'lucide-react'
+import { PageColumns } from '../../shared/ui/AppShell'
 import { Button } from '../../shared/ui/Button'
 import { ErrorBanner } from '../../shared/ui/ErrorBanner'
-import { formatDateTime } from '../practice/labels'
-import { practiceApi, type PracticeSummary } from '../practice/practiceApi'
+import { practiceApi } from '../practice/practiceApi'
+import { PracticeScreen } from '../practice/PracticePage'
+import { usePracticeSummaries } from '../records/usePracticeSummaries'
 import styles from './HomePage.module.css'
 
-/** 로그인 직후 화면. 진행 중인 연습을 이어가거나 새로 시작한다. 이력서 연습은 아직 준비 중이다. */
+/**
+ * 첫 화면이 곧 연습 화면이다. 진행 중인 연습이 있으면 가장 최근 것을 바로 이어서 보여 주고,
+ * 없으면 시작 버튼을 보여 준다. 시작해도 주소는 그대로 두고 이 자리에서 연습한다.
+ * 빈 연습이 쌓이지 않도록 사용자가 시작을 누를 때만 연습을 만든다.
+ */
 export function HomePage() {
-  const navigate = useNavigate()
-  const [inProgress, setInProgress] = useState<PracticeSummary[]>([])
+  const { state } = usePracticeSummaries()
+  const [startedId, setStartedId] = useState<number | null>(null)
+
+  if (startedId != null) {
+    return <PracticeScreen key={startedId} practiceId={startedId} />
+  }
+  if (state.status === 'loading') {
+    return null
+  }
+  const ongoing = state.status === 'loaded' ? state.items.find((item) => item.canProceed) : undefined
+  if (ongoing) {
+    return <PracticeScreen key={ongoing.id} practiceId={ongoing.id} />
+  }
+  return <StartView onStarted={setStartedId} />
+}
+
+function StartView({ onStarted }: { onStarted: (practiceId: number) => void }) {
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    let ignore = false
-    practiceApi
-      .list()
-      .then((items) => {
-        if (!ignore) {
-          setInProgress(items.filter((item) => item.canProceed).slice(0, 3))
-        }
-      })
-      .catch(() => {
-        // 이어하기 목록은 없어도 새 연습은 시작할 수 있다.
-      })
-    return () => {
-      ignore = true
-    }
-  }, [])
 
   const start = async () => {
     setStarting(true)
     setError(null)
     try {
-      const practice = await practiceApi.create()
-      navigate(`/practices/${practice.id}`)
+      onStarted((await practiceApi.create()).id)
     } catch {
       setError('연습을 시작하지 못했어요. 잠시 후 다시 시도해 주세요.')
       setStarting(false)
@@ -44,40 +46,22 @@ export function HomePage() {
   }
 
   return (
-    <>
+    <PageColumns>
       <section className={styles.header}>
-        <h1 className={styles.title}>어떻게 연습해 볼까요?</h1>
+        <h1 className={styles.title}>오늘도 한 질문만 답해 볼까요?</h1>
         <p className={styles.lead}>처음이라면 자료 없이 바로 시작해 보세요. 이력서는 나중에 더해도 돼요.</p>
       </section>
 
       {error && <ErrorBanner>{error}</ErrorBanner>}
 
       <div className={styles.choices}>
-        {inProgress.length > 0 && (
-          <section className={styles.choice} aria-label="이어하기">
-            <h2 className={styles.choiceTitle}>하던 연습 이어하기</h2>
-            <ul className={styles.resumeList}>
-              {inProgress.map((item) => (
-                <li key={item.id}>
-                  <Link to={`/practices/${item.id}`} className={styles.resumeLink}>
-                    <span>
-                      {formatDateTime(item.createdAt)} 시작 · 질문 {item.questionCount}개
-                    </span>
-                    <ChevronRight size={18} aria-hidden="true" />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
         <section className={styles.choice}>
           <h2 className={styles.choiceTitle}>
             <MessageSquareText size={20} aria-hidden="true" />
             자료 없이 바로 연습
           </h2>
           <p className={styles.choiceBody}>내가 만든 프로젝트에 대한 질문으로 시작해요. 답변에 맞춰 꼬리질문이 이어져요.</p>
-          <Button block onClick={() => void start()} disabled={starting}>
+          <Button block onClick={() => void start()} loading={starting}>
             연습 시작하기
           </Button>
         </section>
@@ -96,6 +80,6 @@ export function HomePage() {
           </Button>
         </section>
       </div>
-    </>
+    </PageColumns>
   )
 }

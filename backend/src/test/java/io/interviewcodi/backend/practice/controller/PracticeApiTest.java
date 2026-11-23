@@ -112,7 +112,22 @@ class PracticeApiTest {
                 .andExpect(jsonPath("$.items[0].id").value(second))
                 .andExpect(jsonPath("$.items[1].id").value(first))
                 .andExpect(jsonPath("$.items[0].questionCount").value(1))
+                .andExpect(jsonPath("$.items[0].answerCount").value(0))
+                .andExpect(jsonPath("$.items[0].lastAnsweredAt").isEmpty())
                 .andExpect(jsonPath("$.items[0].canProceed").value(true));
+    }
+
+    @Test
+    @DisplayName("목록의 답변 수는 다시 답하기를 포함한 시도 수이고, 마지막 답변 시각을 함께 준다")
+    void listCountsAnswerAttempts() throws Exception {
+        long practiceId = createPractice(me);
+        long questionId = currentQuestionId(practiceId);
+        mockMvc.perform(submit(questionId, UUID.randomUUID(), "첫 답변", me)).andExpect(status().isCreated());
+        mockMvc.perform(submit(questionId, UUID.randomUUID(), "다시 답변", me)).andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/practices").cookie(me))
+                .andExpect(jsonPath("$.items[0].answerCount").value(2))
+                .andExpect(jsonPath("$.items[0].lastAnsweredAt").isNotEmpty());
     }
 
     @Test

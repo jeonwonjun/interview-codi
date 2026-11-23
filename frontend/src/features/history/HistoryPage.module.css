@@ -2,7 +2,15 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
-  padding-top: var(--space-2xl);
+  padding-top: var(--space-lg);
+}
+
+.heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-sm);
 }
 
 .title {
@@ -10,9 +18,44 @@
   letter-spacing: var(--tracking-display);
 }
 
+.stats {
+  color: var(--color-text-secondary);
+}
+
+.stats strong {
+  color: var(--color-brand-text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 앱: 달력 아래 그날 목록. 웹: 달력 옆에 그날 목록(마스터-디테일). */
+.layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.day {
+  min-height: 160px;
+}
+
+.dayTitle {
+  font: var(--type-title);
+  letter-spacing: var(--tracking-title);
+}
+
+.empty {
+  color: var(--color-text-secondary);
+}
+
+.empty a {
+  color: var(--color-brand-text);
+  font-weight: 600;
+}
+
 .list {
   display: grid;
-  gap: var(--space-md);
+  gap: var(--space-sm);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -21,8 +64,8 @@
 .item {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-sm) var(--space-sm) var(--space-xl);
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-xs) var(--space-xs) var(--space-lg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
   background: var(--color-surface);
@@ -36,48 +79,45 @@
   box-shadow: var(--shadow-float);
 }
 
-.chevron {
-  color: var(--color-text-secondary);
-  flex: none;
-  transition: transform var(--duration-base) var(--ease-out);
-}
-
-/* 누르면 상세로 간다는 것을 화살표가 살짝 앞으로 나가며 알려 준다. */
-.link:hover .chevron,
-.link:focus-visible .chevron {
-  transform: translateX(3px);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .item,
-  .chevron {
-    transition: none;
-  }
-}
-
 .link {
   display: flex;
   flex: 1;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-sm);
-  min-height: 48px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: 56px;
   color: var(--color-text);
   text-decoration: none;
 }
 
-.date {
-  font-weight: 600;
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.time {
+  font: var(--type-body-strong);
+  font-variant-numeric: tabular-nums;
 }
 
 .meta {
   font: var(--type-caption);
   font-weight: 400;
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
   color: var(--color-text-secondary);
+}
+
+.chevron {
+  flex: none;
+  color: var(--color-text-secondary);
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+/* 누르면 상세로 간다는 것을 화살표가 살짝 앞으로 나가며 알려 준다. */
+.item:hover .chevron,
+.item:focus-within .chevron {
+  transform: translateX(3px);
 }
 
 .startLink {
@@ -95,4 +135,29 @@
 
 .startLink:hover {
   background: var(--color-brand-hover);
+}
+
+@media (min-width: 1024px) {
+  .page {
+    max-width: 1020px;
+    padding-top: 0;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .day {
+    position: sticky;
+    top: var(--space-2xl);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item,
+  .chevron {
+    transition: none;
+  }
 }

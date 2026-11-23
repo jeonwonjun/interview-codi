@@ -1,0 +1,30 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  padding-top: var(--space-lg);
+}
+
+.title {
+  font: var(--type-display);
+  letter-spacing: var(--tracking-display);
+}
+
+.heading {
+  font: var(--type-title);
+  letter-spacing: var(--tracking-title);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.body {
+  color: var(--color-text-secondary);
+}
+
+@media (min-width: 1024px) {
+  .page {
+    max-width: var(--page-max-width);
+    padding-top: 0;
+  }
+}

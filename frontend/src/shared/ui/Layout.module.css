@@ -17,11 +17,6 @@
   text-decoration: none;
 }
 
-.actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-}
 
 .logo {
   width: 28px;
