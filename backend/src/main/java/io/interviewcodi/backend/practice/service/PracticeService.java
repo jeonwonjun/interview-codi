@@ -72,7 +72,7 @@ public class PracticeService {
     public PracticeListResponse list(long userId) {
         List<PracticeSummaryResponse> items = practiceRepository.findSummaries(userId).stream()
                 .map(row -> new PracticeSummaryResponse(row.id(), row.startMode().name(), row.status().name(),
-                        row.createdAt(), row.completedAt(), row.questionCount(),
+                        row.createdAt(), row.completedAt(), row.questionCount(), row.answerCount(),
                         row.status() == PracticeStatus.IN_PROGRESS))
                 .toList();
         return new PracticeListResponse(items);

@@ -62,6 +62,8 @@ export type PracticeSummary = {
   createdAt: string
   completedAt: string | null
   questionCount: number
+  /** 답변 시도 수(다시 답하기 포함). 0이면 시작만 한 연습이라 달력에 표시하지 않는다. */
+  answerCount: number
   canProceed: boolean
 }
 
