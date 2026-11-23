@@ -2,17 +2,20 @@ package io.interviewcodi.backend.practice.service;
 
 import io.interviewcodi.backend.common.error.BusinessException;
 import io.interviewcodi.backend.common.error.ErrorCode;
+import io.interviewcodi.backend.practice.domain.AiRequestStatus;
 import io.interviewcodi.backend.practice.domain.AudioFormat;
 import io.interviewcodi.backend.practice.domain.InputMode;
 import io.interviewcodi.backend.practice.domain.PracticeStatus;
-import io.interviewcodi.backend.practice.dto.AnswerAttemptResponse;
+import io.interviewcodi.backend.practice.dto.AiRequestResponse;
 import io.interviewcodi.backend.practice.repository.AiRequestRepository;
+import io.interviewcodi.backend.practice.repository.AiRequestRepository.TranscribeRow;
 import io.interviewcodi.backend.practice.repository.AnswerRepository;
 import io.interviewcodi.backend.practice.repository.PracticeRepository;
 import io.interviewcodi.backend.practice.repository.QuestionRepository;
 import io.interviewcodi.backend.practice.repository.QuestionRepository.CurrentQuestion;
 import io.interviewcodi.backend.practice.repository.RecordingRepository;
 import io.interviewcodi.backend.practice.repository.RecordingRepository.RecordingFileRow;
+import io.interviewcodi.backend.practice.repository.RecordingRepository.RecordingOwner;
 import io.interviewcodi.backend.practice.service.AnswerService.SubmitResult;
 import io.interviewcodi.backend.practice.storage.RecordingStorage;
 import java.util.Optional;
@@ -112,6 +115,29 @@ public class VoiceAnswerService {
         return new RecordingFile(recordingStorage.load(row.storageKey()), row.contentType(), row.sizeBytes());
     }
 
+    /**
+     * 인식이 실패했거나 버려진 녹음을 다시 글로 옮긴다. 처리 중이거나 이미 성공했으면 그 요청을 돌려준다.
+     * 같은 재요청이 동시에 들어와도 연습 행 잠금 아래에서 확인하고, 녹음 기준 부분 유일 인덱스가 마지막으로 막는다.
+     */
+    @Transactional
+    public TranscriptionRequestResult retryTranscription(long userId, long recordingId) {
+        RecordingOwner owner = recordingRepository.findOwner(recordingId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RECORDING_NOT_FOUND));
+        PracticeStatus status = practiceRepository.lockForOwner(owner.practiceId(), userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RECORDING_NOT_FOUND));
+        if (status != PracticeStatus.IN_PROGRESS) {
+            throw new BusinessException(ErrorCode.PRACTICE_COMPLETED);
+        }
+        Optional<TranscribeRow> latest = aiRequestRepository.findLatestTranscribeRequest(recordingId);
+        if (latest.isPresent() && latest.get().status() != AiRequestStatus.FAILED
+                && latest.get().status() != AiRequestStatus.DISCARDED) {
+            return new TranscriptionRequestResult(
+                    new AiRequestResponse(latest.get().id(), latest.get().status().name()), false);
+        }
+        long requestId = aiRequestRepository.insertTranscribePending(owner.practiceId(), recordingId);
+        return new TranscriptionRequestResult(new AiRequestResponse(requestId, AiRequestStatus.PENDING.name()), true);
+    }
+
     private Optional<SubmitResult> findExisting(long userId, long questionId, UUID clientRequestId) {
         long practiceId = questionRepository.findPracticeIdForOwner(questionId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.QUESTION_NOT_FOUND));
@@ -157,6 +183,9 @@ public class VoiceAnswerService {
             // 지우지 못해도 DB가 가리키지 않는 파일이라 접근할 수 없다. 정리 작업에서 다시 지운다.
             log.warn("Failed to delete orphan recording {}", storageKey, ex);
         }
+    }
+
+    public record TranscriptionRequestResult(AiRequestResponse request, boolean created) {
     }
 
     public record RecordingFile(Resource resource, String contentType, long sizeBytes) {

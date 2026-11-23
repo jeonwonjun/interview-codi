@@ -38,6 +38,7 @@ import org.springframework.session.SessionRepository;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.util.FileSystemUtils;
 
 /**
  * 음성 답변 올리기와 녹음 재생. 인식은 다음 단계(워커)라 여기서는 녹음·인식 요청이 만들어지는 데까지 확인한다.
@@ -71,9 +72,11 @@ class VoiceAnswerApiTest {
     private Cookie me;
 
     @BeforeEach
-    void logIn() {
+    void logIn() throws IOException {
         myUserId = userAccountService.findOrCreateByKakaoUserId(NEXT_KAKAO_USER_ID.incrementAndGet());
         me = TestLogin.sessionCookie(sessionRepository, myUserId);
+        // 테스트 DB는 실행마다 새로 만들어 사용자 ID가 겹친다. 이전 실행이 같은 사용자 폴더에 남긴 파일을 지운다.
+        FileSystemUtils.deleteRecursively(userDir());
     }
 
     @Test
@@ -301,9 +304,13 @@ class VoiceAnswerApiTest {
                 .param("id", practiceId).query(String.class).single();
     }
 
+    private Path userDir() {
+        return storageRoot.resolve("recordings").resolve(String.valueOf(myUserId));
+    }
+
     /** 이 사용자 폴더에 남은 녹음 파일(임시 파일 제외). */
     private List<Path> storedFiles() throws IOException {
-        Path userDir = storageRoot.resolve("recordings").resolve(String.valueOf(myUserId));
+        Path userDir = userDir();
         if (!Files.isDirectory(userDir)) {
             return List.of();
         }

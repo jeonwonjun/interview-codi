@@ -4,6 +4,7 @@ import io.interviewcodi.backend.practice.client.FeedbackGenerator.FeedbackInput;
 import io.interviewcodi.backend.practice.client.FeedbackGenerator.GeneratedFeedback;
 import io.interviewcodi.backend.practice.client.FollowUpQuestionGenerator.FollowUpInput;
 import io.interviewcodi.backend.practice.client.FollowUpQuestionGenerator.GeneratedQuestion;
+import io.interviewcodi.backend.practice.domain.AiRequestKind;
 import io.interviewcodi.backend.practice.domain.DiscardReason;
 import io.interviewcodi.backend.practice.domain.PracticeStatus;
 import io.interviewcodi.backend.practice.repository.AiRequestRepository;
@@ -16,6 +17,8 @@ import io.interviewcodi.backend.practice.repository.PracticeRepository;
 import io.interviewcodi.backend.practice.repository.PracticeRepository.LockedPractice;
 import io.interviewcodi.backend.practice.repository.QuestionRepository;
 import io.interviewcodi.backend.practice.repository.QuestionRepository.CurrentQuestion;
+import io.interviewcodi.backend.practice.repository.RecordingRepository;
+import io.interviewcodi.backend.practice.repository.RecordingRepository.TranscribeSource;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
@@ -41,15 +44,17 @@ public class AiRequestQueueService {
     private final AnswerRepository answerRepository;
     private final FeedbackRepository feedbackRepository;
     private final QuestionRepository questionRepository;
+    private final RecordingRepository recordingRepository;
 
     AiRequestQueueService(AiRequestRepository aiRequestRepository, PracticeRepository practiceRepository,
                           AnswerRepository answerRepository, FeedbackRepository feedbackRepository,
-                          QuestionRepository questionRepository) {
+                          QuestionRepository questionRepository, RecordingRepository recordingRepository) {
         this.aiRequestRepository = aiRequestRepository;
         this.practiceRepository = practiceRepository;
         this.answerRepository = answerRepository;
         this.feedbackRepository = feedbackRepository;
         this.questionRepository = questionRepository;
+        this.recordingRepository = recordingRepository;
     }
 
     /**
@@ -155,6 +160,49 @@ public class AiRequestQueueService {
             return DiscardReason.QUESTION_CHANGED;
         }
         return null;
+    }
+
+    @Transactional(readOnly = true)
+    public TranscribeSource loadTranscribeSource(ClaimedRequest request) {
+        return recordingRepository.findTranscribeSource(request.recordingId());
+    }
+
+    /**
+     * 인식 문구를 음성 시도의 버전 1로 저장하고, 그 버전의 피드백 요청을 같은 트랜잭션에 만든다.
+     * 그래서 "인식은 됐는데 피드백 요청이 없는" 상태가 생기지 않는다.
+     * <ul>
+     * <li>연습이 삭제됨 → PRACTICE_DELETED</li>
+     * <li>연습을 마친 것·질문을 넘긴 것은 막지 않는다. 텍스트 답변처럼, 제출한 답변은 기록에 남기고 피드백한다.</li>
+     * </ul>
+     *
+     * @param text 앞뒤 공백을 지운, 1자 이상 3,000자 이하의 인식 문구
+     */
+    @Transactional
+    public Outcome applyTranscription(ClaimedRequest request, String text) {
+        LockedPractice practice = practiceRepository.lockById(request.practiceId()).orElseThrow();
+        if (!aiRequestRepository.lockIfStillLeased(request.id(), request.leaseToken())) {
+            return Outcome.LEASE_LOST;
+        }
+        if (practice.deleted()) {
+            aiRequestRepository.markDiscarded(request.id(), DiscardReason.PRACTICE_DELETED);
+            return Outcome.DISCARDED;
+        }
+        long answerId = recordingRepository.findTranscribeSource(request.recordingId()).answerId();
+        long revisionId = answerRepository.insertRevision(answerId, 1, text);
+        aiRequestRepository.insertPending(request.practiceId(), AiRequestKind.FEEDBACK, revisionId);
+        aiRequestRepository.markSucceeded(request.id());
+        return Outcome.SUCCEEDED;
+    }
+
+    /** 다시 시도해도 결과가 같은 실패(빈 인식 결과 등). 재시도 없이 FAILED로 끝낸다. */
+    @Transactional
+    public Outcome failWithoutRetry(ClaimedRequest request, String errorType) {
+        practiceRepository.lockById(request.practiceId()).orElseThrow();
+        if (!aiRequestRepository.lockIfStillLeased(request.id(), request.leaseToken())) {
+            return Outcome.LEASE_LOST;
+        }
+        aiRequestRepository.markFailed(request.id(), errorType);
+        return Outcome.FAILED;
     }
 
     /**

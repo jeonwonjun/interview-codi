@@ -3,10 +3,12 @@ package io.interviewcodi.backend.practice.controller;
 import io.interviewcodi.backend.auth.domain.LoginUser;
 import io.interviewcodi.backend.common.error.BusinessException;
 import io.interviewcodi.backend.common.error.ErrorCode;
+import io.interviewcodi.backend.practice.dto.AiRequestResponse;
 import io.interviewcodi.backend.practice.dto.AnswerAttemptResponse;
 import io.interviewcodi.backend.practice.service.AnswerService.SubmitResult;
 import io.interviewcodi.backend.practice.service.VoiceAnswerService;
 import io.interviewcodi.backend.practice.service.VoiceAnswerService.RecordingFile;
+import io.interviewcodi.backend.practice.service.VoiceAnswerService.TranscriptionRequestResult;
 import java.io.IOException;
 import java.util.UUID;
 import org.springframework.core.io.Resource;
@@ -56,6 +58,13 @@ class VoiceAnswerController {
                 .contentType(MediaType.parseMediaType(file.contentType()))
                 .cacheControl(CacheControl.noStore().cachePrivate())
                 .body(file.resource());
+    }
+
+    /** 다시 글로 옮기기. 실패·버림이면 새로 만들어 201, 처리 중이거나 성공한 요청이 있으면 그것을 200. */
+    @PostMapping("/api/recordings/{recordingId}/transcriptions")
+    ResponseEntity<AiRequestResponse> retryTranscription(LoginUser loginUser, @PathVariable long recordingId) {
+        TranscriptionRequestResult result = voiceAnswerService.retryTranscription(loginUser.userId(), recordingId);
+        return ResponseEntity.status(result.created() ? HttpStatus.CREATED : HttpStatus.OK).body(result.request());
     }
 
     private static byte[] readBytes(MultipartFile audio) {

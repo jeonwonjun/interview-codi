@@ -5,10 +5,17 @@ import io.interviewcodi.backend.practice.client.FeedbackGenerator;
 import io.interviewcodi.backend.practice.client.FeedbackGenerator.GeneratedFeedback;
 import io.interviewcodi.backend.practice.client.FollowUpQuestionGenerator;
 import io.interviewcodi.backend.practice.client.FollowUpQuestionGenerator.GeneratedQuestion;
+import io.interviewcodi.backend.practice.client.SpeechToTextClient;
+import io.interviewcodi.backend.practice.client.SpeechToTextClient.AudioFile;
+import io.interviewcodi.backend.practice.client.SpeechToTextClient.Transcription;
+import io.interviewcodi.backend.practice.client.SpeechToTextException;
 import io.interviewcodi.backend.practice.domain.AiRequestKind;
 import io.interviewcodi.backend.practice.repository.AiRequestRepository.ClaimedRequest;
+import io.interviewcodi.backend.practice.repository.RecordingRepository.TranscribeSource;
 import io.interviewcodi.backend.practice.service.AiRequestQueueService.Claim;
 import io.interviewcodi.backend.practice.service.AiRequestQueueService.Outcome;
+import io.interviewcodi.backend.practice.storage.RecordingStorage;
+import java.io.IOException;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,16 +32,23 @@ import org.springframework.stereotype.Service;
 public class AiRequestProcessingService {
 
     private static final Logger log = LoggerFactory.getLogger(AiRequestProcessingService.class);
+    // 답변 버전 본문 한도(DB 제약)와 같다. 3분 녹음은 보통 1,000자 안팎이다.
+    private static final int MAX_TRANSCRIPT_LENGTH = 3_000;
 
     private final AiRequestQueueService queue;
     private final FeedbackGenerator feedbackGenerator;
     private final FollowUpQuestionGenerator followUpQuestionGenerator;
+    private final SpeechToTextClient speechToTextClient;
+    private final RecordingStorage recordingStorage;
 
     AiRequestProcessingService(AiRequestQueueService queue, FeedbackGenerator feedbackGenerator,
-                               FollowUpQuestionGenerator followUpQuestionGenerator) {
+                               FollowUpQuestionGenerator followUpQuestionGenerator,
+                               SpeechToTextClient speechToTextClient, RecordingStorage recordingStorage) {
         this.queue = queue;
         this.feedbackGenerator = feedbackGenerator;
         this.followUpQuestionGenerator = followUpQuestionGenerator;
+        this.speechToTextClient = speechToTextClient;
+        this.recordingStorage = recordingStorage;
     }
 
     /**
@@ -65,11 +79,43 @@ public class AiRequestProcessingService {
     }
 
     private Outcome generateAndApply(ClaimedRequest request) {
+        if (request.kind() == AiRequestKind.TRANSCRIBE) {
+            return transcribeAndApply(request);
+        }
         if (request.kind() == AiRequestKind.FEEDBACK) {
             GeneratedFeedback feedback = feedbackGenerator.generate(queue.loadFeedbackInput(request));
             return queue.applyFeedback(request, feedback);
         }
         GeneratedQuestion question = followUpQuestionGenerator.generate(queue.loadFollowUpInput(request));
         return queue.applyFollowUp(request, question);
+    }
+
+    /**
+     * 녹음을 읽어 인식기에 보낸다(트랜잭션 밖). 빈 결과·너무 긴 결과는 다시 해도 같으므로 재시도하지 않는다.
+     * 제공자 오류·제한 시간 초과는 다른 요청과 같은 재시도 규칙을 따른다.
+     */
+    private Outcome transcribeAndApply(ClaimedRequest request) {
+        TranscribeSource source = queue.loadTranscribeSource(request);
+        Transcription transcription;
+        try {
+            byte[] audio = recordingStorage.load(source.storageKey()).getContentAsByteArray();
+            String filename = "answer." + source.storageKey().substring(source.storageKey().lastIndexOf('.') + 1);
+            transcription = speechToTextClient.transcribe(new AudioFile(audio, filename, source.contentType()));
+        } catch (IOException ex) {
+            return queue.fail(request, "RECORDING_READ_FAILED");
+        } catch (SpeechToTextException ex) {
+            if (ex.reason().equals("EMPTY_TEXT")) {
+                return queue.failWithoutRetry(request, ex.reason());
+            }
+            return queue.fail(request, ex.reason());
+        }
+        String text = transcription.text() == null ? "" : transcription.text().strip();
+        if (text.isEmpty()) {
+            return queue.failWithoutRetry(request, "EMPTY_TEXT");
+        }
+        if (text.codePointCount(0, text.length()) > MAX_TRANSCRIPT_LENGTH) {
+            return queue.failWithoutRetry(request, "TRANSCRIPT_TOO_LONG");
+        }
+        return queue.applyTranscription(request, text);
     }
 }
