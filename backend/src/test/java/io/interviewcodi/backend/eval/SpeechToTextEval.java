@@ -62,7 +62,8 @@ class SpeechToTextEval {
     private static final String OPENAI_MODEL = System.getProperty("eval.openaiModel", "gpt-transcribe");
     private static final String RTZR_MODEL = System.getProperty("eval.rtzrModel", "sommers");
     private static final int LIMIT = Integer.parseInt(System.getProperty("eval.limit", "0"));
-    private static final Path AUDIO_DIR = Path.of("../eval-audio");
+    // 같은 대본을 다른 조건(음질 등)으로 만든 녹음을 평가할 때 -Deval.audioDir로 폴더를 바꾼다.
+    private static final Path AUDIO_DIR = Path.of(System.getProperty("eval.audioDir", "../eval-audio"));
 
     record Script(String id, String file, String device, String environment, String question, String script,
                   Map<String, List<String>> aliases) {
