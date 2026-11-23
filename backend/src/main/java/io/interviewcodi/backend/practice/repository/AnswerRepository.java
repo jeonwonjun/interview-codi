@@ -1,5 +1,6 @@
 package io.interviewcodi.backend.practice.repository;
 
+import io.interviewcodi.backend.practice.domain.InputMode;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -39,15 +40,16 @@ public class AnswerRepository {
                 .single();
     }
 
-    public long insertAnswer(long questionId, int attemptNo, UUID clientRequestId) {
+    public long insertAnswer(long questionId, int attemptNo, UUID clientRequestId, InputMode inputMode) {
         return jdbcClient.sql("""
-                        insert into answers (question_id, attempt_no, client_request_id)
-                        values (:questionId, :attemptNo, :clientRequestId)
+                        insert into answers (question_id, attempt_no, client_request_id, input_mode)
+                        values (:questionId, :attemptNo, :clientRequestId, :inputMode)
                         returning id
                         """)
                 .param("questionId", questionId)
                 .param("attemptNo", attemptNo)
                 .param("clientRequestId", clientRequestId)
+                .param("inputMode", inputMode.name())
                 .query(Long.class)
                 .single();
     }
@@ -65,17 +67,22 @@ public class AnswerRepository {
                 .single();
     }
 
-    /** 답변 시도별 현재 버전(삭제되지 않은 가장 큰 revision_no). 연습의 삭제 확인은 호출하는 쪽이 한다. */
+    /**
+     * 답변 시도별 현재 버전(삭제되지 않은 가장 큰 revision_no). 인식이 끝나지 않은 음성 시도는 버전 칸이 비어 있다.
+     * 연습의 삭제 확인은 호출하는 쪽이 한다.
+     */
     public List<AttemptRow> findAttemptsWithCurrentRevision(long practiceId) {
         return jdbcClient.sql("""
-                        select distinct on (a.id)
-                               a.id, a.question_id, a.attempt_no,
+                        select a.id, a.question_id, a.attempt_no, a.input_mode,
                                r.id as revision_id, r.revision_no, r.content
                         from answers a
                         join questions q on q.id = a.question_id
-                        join answer_revisions r on r.answer_id = a.id and r.deleted_at is null
+                        left join lateral (
+                            select id, revision_no, content from answer_revisions
+                            where answer_id = a.id and deleted_at is null
+                            order by revision_no desc limit 1) r on true
                         where q.practice_id = :practiceId and q.deleted_at is null and a.deleted_at is null
-                        order by a.id, r.revision_no desc
+                        order by a.id
                         """)
                 .param("practiceId", practiceId)
                 .query(AttemptRow.class)
@@ -84,13 +91,14 @@ public class AnswerRepository {
 
     public Optional<AttemptRow> findAttemptWithCurrentRevision(long answerId) {
         return jdbcClient.sql("""
-                        select a.id, a.question_id, a.attempt_no,
+                        select a.id, a.question_id, a.attempt_no, a.input_mode,
                                r.id as revision_id, r.revision_no, r.content
                         from answers a
-                        join answer_revisions r on r.answer_id = a.id and r.deleted_at is null
+                        left join lateral (
+                            select id, revision_no, content from answer_revisions
+                            where answer_id = a.id and deleted_at is null
+                            order by revision_no desc limit 1) r on true
                         where a.id = :answerId and a.deleted_at is null
-                        order by r.revision_no desc
-                        limit 1
                         """)
                 .param("answerId", answerId)
                 .query(AttemptRow.class)
@@ -186,7 +194,13 @@ public class AnswerRepository {
                 .single();
     }
 
-    public record AttemptRow(long id, long questionId, int attemptNo, long revisionId, int revisionNo, String content) {
+    /** 인식이 끝나지 않은 음성 시도는 {@code revisionId}·{@code revisionNo}·{@code content}가 null이다. */
+    public record AttemptRow(long id, long questionId, int attemptNo, InputMode inputMode, Long revisionId,
+                             Integer revisionNo, String content) {
+
+        public boolean hasRevision() {
+            return revisionId != null;
+        }
     }
 
     public record FeedbackSource(String question, String answer, String previousSuggestion) {
