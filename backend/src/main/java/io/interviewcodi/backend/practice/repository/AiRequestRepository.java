@@ -33,6 +33,48 @@ public class AiRequestRepository {
                 .single();
     }
 
+    /** 녹음을 글로 옮기는 요청을 쌓는다. 시도·녹음 저장과 같은 트랜잭션에서 호출한다. */
+    public long insertTranscribePending(long practiceId, long recordingId) {
+        return jdbcClient.sql("""
+                        insert into ai_requests (practice_id, kind, recording_id)
+                        values (:practiceId, 'TRANSCRIBE', :recordingId)
+                        returning id
+                        """)
+                .param("practiceId", practiceId)
+                .param("recordingId", recordingId)
+                .query(Long.class)
+                .single();
+    }
+
+    /** 녹음별 가장 최근 인식 요청. */
+    public List<TranscribeRow> findLatestTranscribeRequests(long practiceId) {
+        return jdbcClient.sql("""
+                        select distinct on (recording_id) id, recording_id, status
+                        from ai_requests
+                        where practice_id = :practiceId and kind = 'TRANSCRIBE'
+                        order by recording_id, id desc
+                        """)
+                .param("practiceId", practiceId)
+                .query(TranscribeRow.class)
+                .list();
+    }
+
+    /** 이 질문의 시도 중 아직 글로 옮기는 중(PENDING·RUNNING)인 음성 시도가 있는지. */
+    public boolean hasActiveTranscription(long questionId) {
+        return jdbcClient.sql("""
+                        select exists (
+                            select 1
+                            from ai_requests r
+                            join recordings rec on rec.id = r.recording_id
+                            join answers a on a.id = rec.answer_id
+                            where a.question_id = :questionId and r.kind = 'TRANSCRIBE'
+                              and r.status in ('PENDING', 'RUNNING'))
+                        """)
+                .param("questionId", questionId)
+                .query(Boolean.class)
+                .single();
+    }
+
     /** 아직 꺼내지 않은 요청을 버린다. 처리 중(RUNNING)인 요청은 워커가 결과를 반영할 때 버린다. */
     public int discardPending(long practiceId, AiRequestKind kind, DiscardReason reason) {
         return jdbcClient.sql("""
@@ -100,8 +142,10 @@ public class AiRequestRepository {
                         where id = (
                             select id
                             from ai_requests
-                            where (status = 'PENDING' and available_at <= now())
-                               or (status = 'RUNNING' and lease_until < now())
+                            -- 인식 요청은 인식 워커(다음 단계)가 생기기 전까지 꺼내지 않는다.
+                            where kind <> 'TRANSCRIBE'
+                              and ((status = 'PENDING' and available_at <= now())
+                                or (status = 'RUNNING' and lease_until < now()))
                             order by id
                             limit 1
                             for update skip locked)
@@ -217,7 +261,7 @@ public class AiRequestRepository {
     /** 본인의 삭제되지 않은 연습에 속한 요청과 그 결과 식별값. */
     public Optional<RequestDetailRow> findDetailForOwner(long requestId, long userId) {
         return jdbcClient.sql("""
-                        select r.id, r.kind, r.status, r.discard_reason, r.answer_revision_id,
+                        select r.id, r.kind, r.status, r.discard_reason, r.answer_revision_id, r.recording_id,
                                f.id as feedback_id, q.id as question_id
                         from ai_requests r
                         join practices p on p.id = r.practice_id
@@ -238,7 +282,11 @@ public class AiRequestRepository {
                                  int attemptCount, UUID leaseToken) {
     }
 
+    /** 인식 요청(TRANSCRIBE)은 {@code answerRevisionId}가 null이고 {@code recordingId}가 있다. */
     public record RequestDetailRow(long id, AiRequestKind kind, AiRequestStatus status, DiscardReason discardReason,
-                                   long answerRevisionId, Long feedbackId, Long questionId) {
+                                   Long answerRevisionId, Long recordingId, Long feedbackId, Long questionId) {
+    }
+
+    public record TranscribeRow(long id, long recordingId, AiRequestStatus status) {
     }
 }

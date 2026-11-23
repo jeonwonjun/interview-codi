@@ -1,8 +1,5 @@
 package io.interviewcodi.backend.practice.service;
 
-import static java.util.stream.Collectors.groupingBy;
-import static java.util.stream.Collectors.toMap;
-
 import io.interviewcodi.backend.common.error.BusinessException;
 import io.interviewcodi.backend.common.error.ErrorCode;
 import io.interviewcodi.backend.practice.domain.AiRequestKind;
@@ -12,26 +9,17 @@ import io.interviewcodi.backend.practice.domain.PracticeStatus;
 import io.interviewcodi.backend.practice.domain.StartMode;
 import io.interviewcodi.backend.practice.dto.AiRequestResponse;
 import io.interviewcodi.backend.practice.dto.AnswerAttemptResponse;
-import io.interviewcodi.backend.practice.dto.AnswerRevisionResponse;
-import io.interviewcodi.backend.practice.dto.FeedbackResponse;
 import io.interviewcodi.backend.practice.dto.PracticeListResponse;
 import io.interviewcodi.backend.practice.dto.PracticeResponse;
 import io.interviewcodi.backend.practice.dto.PracticeSummaryResponse;
 import io.interviewcodi.backend.practice.dto.QuestionResponse;
 import io.interviewcodi.backend.practice.repository.AiRequestRepository;
-import io.interviewcodi.backend.practice.repository.AiRequestRepository.RequestRow;
-import io.interviewcodi.backend.practice.repository.AnswerRepository;
-import io.interviewcodi.backend.practice.repository.AnswerRepository.AttemptRow;
-import io.interviewcodi.backend.practice.repository.FeedbackRepository;
-import io.interviewcodi.backend.practice.repository.FeedbackRepository.FeedbackRow;
 import io.interviewcodi.backend.practice.repository.PracticeRepository;
 import io.interviewcodi.backend.practice.repository.PracticeRepository.PracticeRow;
 import io.interviewcodi.backend.practice.repository.QuestionRepository;
 import io.interviewcodi.backend.practice.repository.QuestionRepository.QuestionRow;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,18 +31,15 @@ public class PracticeService {
 
     private final PracticeRepository practiceRepository;
     private final QuestionRepository questionRepository;
-    private final AnswerRepository answerRepository;
     private final AiRequestRepository aiRequestRepository;
-    private final FeedbackRepository feedbackRepository;
+    private final AnswerAttemptReader answerAttemptReader;
 
     PracticeService(PracticeRepository practiceRepository, QuestionRepository questionRepository,
-                    AnswerRepository answerRepository, AiRequestRepository aiRequestRepository,
-                    FeedbackRepository feedbackRepository) {
+                    AiRequestRepository aiRequestRepository, AnswerAttemptReader answerAttemptReader) {
         this.practiceRepository = practiceRepository;
         this.questionRepository = questionRepository;
-        this.answerRepository = answerRepository;
         this.aiRequestRepository = aiRequestRepository;
-        this.feedbackRepository = feedbackRepository;
+        this.answerAttemptReader = answerAttemptReader;
     }
 
     /** 연습과 첫 고정 질문을 함께 저장한다. 질문 없는 연습이 생기지 않는다. */
@@ -85,22 +70,13 @@ public class PracticeService {
         PracticeRow practice = practiceRepository.findForOwner(practiceId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PRACTICE_NOT_FOUND));
         List<QuestionRow> questions = questionRepository.findByPractice(practiceId);
-        Map<Long, List<AttemptRow>> attemptsByQuestion = answerRepository.findAttemptsWithCurrentRevision(practiceId)
-                .stream()
-                .collect(groupingBy(AttemptRow::questionId));
-        Map<Long, RequestRow> requestByRevision = aiRequestRepository.findLatestFeedbackRequests(practiceId).stream()
-                .collect(toMap(RequestRow::answerRevisionId, Function.identity()));
-        Map<Long, FeedbackRow> feedbackByRevision = feedbackRepository.findByPractice(practiceId).stream()
-                .collect(toMap(FeedbackRow::answerRevisionId, Function.identity()));
+        Map<Long, List<AnswerAttemptResponse>> attemptsByQuestion = answerAttemptReader.readByQuestion(practiceId);
 
         long currentQuestionId = questions.getLast().id();
         List<QuestionResponse> questionResponses = questions.stream()
                 .map(question -> new QuestionResponse(question.id(), question.orderNo(), question.content(),
                         question.sourceKind().name(), question.skipped(), question.id() == currentQuestionId,
-                        attemptsByQuestion.getOrDefault(question.id(), List.of()).stream()
-                                .sorted(Comparator.comparingInt(AttemptRow::attemptNo))
-                                .map(attempt -> toAttemptResponse(attempt, requestByRevision, feedbackByRevision))
-                                .toList()))
+                        attemptsByQuestion.getOrDefault(question.id(), List.of())))
                 .toList();
 
         boolean canProceed = practice.status() == PracticeStatus.IN_PROGRESS;
@@ -135,17 +111,5 @@ public class PracticeService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.PRACTICE_NOT_FOUND));
         practiceRepository.softDelete(practiceId);
         aiRequestRepository.discardAllPending(practiceId, DiscardReason.PRACTICE_DELETED);
-    }
-
-    public static AnswerAttemptResponse toAttemptResponse(AttemptRow attempt, Map<Long, RequestRow> requestByRevision,
-                                                   Map<Long, FeedbackRow> feedbackByRevision) {
-        RequestRow request = requestByRevision.get(attempt.revisionId());
-        FeedbackRow feedback = feedbackByRevision.get(attempt.revisionId());
-        return new AnswerAttemptResponse(attempt.id(), attempt.questionId(), attempt.attemptNo(),
-                new AnswerRevisionResponse(attempt.revisionId(), attempt.revisionNo(), attempt.content()),
-                feedback == null ? null : new FeedbackResponse(feedback.id(), feedback.answerRevisionId(),
-                        feedback.observation(), feedback.suggestion(), feedback.suggestionFocus(),
-                        feedback.previousReview()),
-                request == null ? null : new AiRequestResponse(request.id(), request.status().name()));
     }
 }
