@@ -17,6 +17,8 @@ import tools.jackson.databind.JsonNode;
  * <li>{@code media}(파일)와 {@code params}(JSON 문자열)를 보낸다. 동기({@code completion=sync})면 응답의 {@code text}가 전체 문구다.</li>
  * <li>받는 형식: MP3·AAC·AC3·OGG·FLAC·WAV·M4A. 목록에 webm은 없다. 보관·학습 사용 여부는 문서에서 찾지 못했다.</li>
  * </ul>
+ * <p>
+ * 문맥({@link AudioFile#context()})은 쓰지 않는다. 평가 실행기에서만 쓰는 클라이언트라 지원 여부를 확인하지 않았다.
  */
 public class ClovaSpeechClient implements SpeechToTextClient {
 

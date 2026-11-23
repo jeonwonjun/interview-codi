@@ -7,6 +7,7 @@ import io.interviewcodi.backend.practice.client.SpeechToTextClient;
 import io.interviewcodi.backend.practice.client.SpeechToTextClient.AudioFile;
 import io.interviewcodi.backend.practice.client.SpeechToTextClient.Transcription;
 import io.interviewcodi.backend.practice.client.SpeechToTextException;
+import io.interviewcodi.backend.practice.domain.TranscriptionContext;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -62,6 +63,8 @@ class SpeechToTextEval {
     private static final String OPENAI_MODEL = System.getProperty("eval.openaiModel", "gpt-transcribe");
     private static final String RTZR_MODEL = System.getProperty("eval.rtzrModel", "sommers");
     private static final int LIMIT = Integer.parseInt(System.getProperty("eval.limit", "0"));
+    // -Deval.context=interview면 서비스와 같은 문맥을 넘긴다(받는 제공자만 쓴다).
+    private static final boolean WITH_CONTEXT = "interview".equals(System.getProperty("eval.context", "none"));
     // 같은 대본을 다른 조건(음질 등)으로 만든 녹음을 평가할 때 -Deval.audioDir로 폴더를 바꾼다.
     private static final Path AUDIO_DIR = Path.of(System.getProperty("eval.audioDir", "../eval-audio"));
 
@@ -109,7 +112,8 @@ class SpeechToTextEval {
     private static Row run(SpeechToTextClient client, Sample sample) throws IOException {
         String extension = extension(sample.audio());
         AudioFile audio = new AudioFile(Files.readAllBytes(sample.audio()), sample.audio().getFileName().toString(),
-                CONTENT_TYPES.getOrDefault(extension, "application/octet-stream"));
+                CONTENT_TYPES.getOrDefault(extension, "application/octet-stream"),
+                WITH_CONTEXT ? TranscriptionContext.INTERVIEW_ANSWER : null);
         try {
             Transcription transcription = client.transcribe(audio);
             CharacterErrorRate.Result cer = CharacterErrorRate.of(sample.reference(), transcription.text(),
@@ -147,7 +151,8 @@ class SpeechToTextEval {
     }
 
     private static String report(String name, List<Row> rows) {
-        StringBuilder text = new StringBuilder("# " + name + " (" + LocalDate.now() + ")\n\n");
+        StringBuilder text = new StringBuilder("# " + name + " (" + LocalDate.now()
+                + (WITH_CONTEXT ? ", 문맥: 면접 답변" : ", 문맥 없음") + ")\n\n");
         text.append("| 녹음 | 환경 | CER | 편집 거리 / 정답 글자 | 시간 | 길이 |\n| --- | --- | --- | --- | --- | --- |\n");
         for (Row row : rows) {
             Script script = row.sample().script();
