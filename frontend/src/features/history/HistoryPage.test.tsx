@@ -7,8 +7,9 @@ import { ToastProvider } from '../../shared/ui/ToastProvider'
 import type { PracticeSummary } from '../practice/practiceApi'
 import { HistoryPage } from './HistoryPage'
 
-function summary(id: number, createdAt: Date, answerCount: number): PracticeSummary {
+function summary(id: number, createdAt: Date, answerCount: number, lastAnsweredAt?: Date): PracticeSummary {
   return {
+    lastAnsweredAt: answerCount > 0 ? (lastAnsweredAt ?? createdAt).toISOString() : null,
     id,
     startMode: 'EXPERIENCE',
     status: 'COMPLETED',
@@ -65,6 +66,19 @@ describe('달력 기록', () => {
 
     expect(screen.getByRole('heading', { name: '11월 17일 화요일' })).toBeTruthy()
     expect(screen.getByText('질문 2개 · 아직 답하지 않음')).toBeTruthy()
+  })
+
+  it('며칠에 걸쳐 이어 한 연습은 마지막으로 답한 날에 표시한다', async () => {
+    fakeServer({
+      'GET /api/practices': ok({
+        items: [summary(5, new Date(2026, 10, 16, 9, 0), 3, new Date(2026, 10, 19, 8, 30))],
+      }),
+    })
+    renderPage()
+
+    expect(await screen.findByRole('button', { name: '11월 19일, 연습 1번' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '11월 16일, 연습 없음' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: '11월 19일 목요일' })).toBeTruthy()
   })
 
   it('기록이 하나도 없으면 시작 안내를 보여 준다', async () => {

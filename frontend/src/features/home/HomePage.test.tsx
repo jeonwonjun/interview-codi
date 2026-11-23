@@ -39,6 +39,7 @@ function summary(id: number, canProceed: boolean): PracticeSummary {
     completedAt: null,
     questionCount: 1,
     answerCount: 1,
+    lastAnsweredAt: '2026-11-19T10:05:00Z',
     canProceed,
   }
 }

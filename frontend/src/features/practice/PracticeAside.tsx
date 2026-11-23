@@ -1,7 +1,7 @@
 import { Check, CircleDot, SkipForward } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Card } from '../../shared/ui/Card'
-import { dateKey, groupByDay, streak } from '../records/calendar'
+import { activityAt, dateKey, groupByDay, streak } from '../records/calendar'
 import { MonthCalendar } from '../records/MonthCalendar'
 import { usePracticeSummaries } from '../records/usePracticeSummaries'
 import type { Practice } from './practiceApi'
@@ -25,7 +25,7 @@ export function PracticeAside({ practice }: { practice: Practice }) {
   }, [answerTotal, reload])
 
   const answered = state.status === 'loaded' ? state.items.filter((item) => item.answerCount > 0) : []
-  const byDay = groupByDay(answered)
+  const byDay = groupByDay(answered, activityAt)
   const counts = new Map([...byDay].map(([key, items]) => [key, items.length]))
   const thisMonth = [...byDay.keys()].filter((key) => key.startsWith(dateKey(today).slice(0, 7))).length
   const days = streak(new Set(byDay.keys()), today)

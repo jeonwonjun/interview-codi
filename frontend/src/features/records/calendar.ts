@@ -28,11 +28,11 @@ export function monthGrid(year: number, month: number): (Date | null)[][] {
   return weeks
 }
 
-/** 항목을 시작한 날짜별로 묶는다. 같은 날 안에서는 받은 순서를 지킨다. */
-export function groupByDay<T extends { createdAt: string }>(items: T[]): Map<string, T[]> {
+/** 항목을 {@code at}이 가리키는 시각의 날짜별로 묶는다. 같은 날 안에서는 받은 순서를 지킨다. */
+export function groupByDay<T>(items: T[], at: (item: T) => string): Map<string, T[]> {
   const groups = new Map<string, T[]>()
   for (const item of items) {
-    const key = dateKey(new Date(item.createdAt))
+    const key = dateKey(new Date(at(item)))
     groups.set(key, [...(groups.get(key) ?? []), item])
   }
   return groups
@@ -53,6 +53,11 @@ export function streak(practicedDays: Set<string>, today: Date): number {
     cursor.setDate(cursor.getDate() - 1)
   }
   return count
+}
+
+/** 연습한 시각: 마지막으로 답한 때, 아직 답이 없으면 시작한 때. */
+export function activityAt(item: { createdAt: string; lastAnsweredAt: string | null }): string {
+  return item.lastAnsweredAt ?? item.createdAt
 }
 
 export function addMonths(date: Date, amount: number): Date {

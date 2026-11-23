@@ -10,7 +10,7 @@ import { IconButton } from '../../shared/ui/IconButton'
 import { useToast } from '../../shared/ui/toastContext'
 import { formatDateTime } from '../practice/labels'
 import { practiceApi, type PracticeSummary } from '../practice/practiceApi'
-import { dateKey, groupByDay, parseDateKey, streak } from '../records/calendar'
+import { activityAt, dateKey, groupByDay, parseDateKey, streak } from '../records/calendar'
 import { MonthCalendar } from '../records/MonthCalendar'
 import { usePracticeSummaries } from '../records/usePracticeSummaries'
 import styles from './HistoryPage.module.css'
@@ -20,7 +20,8 @@ const timeLabel = new Intl.DateTimeFormat('ko-KR', { hour: '2-digit', minute: '2
 
 /**
  * 달력 기록. 답변한 날에 점을 찍고, 날짜를 누르면 그날 연습을 보여 준다(uibowl 캘린더 패턴).
- * 시작만 하고 답하지 않은 연습은 점을 찍지 않지만 그날 목록에는 보여 줘서 지울 수 있게 한다.
+ * 연습은 마지막으로 답한 날로 묶는다(며칠에 걸쳐 이어 한 연습은 마지막 날에 보인다).
+ * 시작만 하고 답하지 않은 연습은 점을 찍지 않지만 시작한 날 목록에는 보여 줘서 지울 수 있게 한다.
  */
 export function HistoryPage() {
   const { state, reload } = usePracticeSummaries()
@@ -41,12 +42,16 @@ export function HistoryPage() {
     return <ErrorBanner>기록을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.</ErrorBanner>
   }
 
-  const items = state.items
-  const byDay = groupByDay(items)
-  const answeredByDay = groupByDay(items.filter((item) => item.answerCount > 0))
+  // 마지막으로 답한 날(답이 없으면 시작한 날)로 묶고, 최근에 한 것부터 보여 준다.
+  const items = [...state.items].sort((a, b) => activityAt(b).localeCompare(activityAt(a)))
+  const byDay = groupByDay(items, activityAt)
+  const answeredByDay = groupByDay(
+    items.filter((item) => item.answerCount > 0),
+    activityAt,
+  )
   const counts = new Map([...answeredByDay].map(([key, list]) => [key, list.length]))
   // 고르지 않았으면 오늘, 오늘 기록이 없으면 가장 최근에 연습한 날을 보여 준다.
-  const latestKey = items.length > 0 ? dateKey(new Date(items[0].createdAt)) : null
+  const latestKey = items.length > 0 ? dateKey(new Date(activityAt(items[0]))) : null
   const selectedKey = selected ?? (byDay.has(dateKey(today)) || !latestKey ? dateKey(today) : latestKey)
   const dayItems = byDay.get(selectedKey) ?? []
   const monthPrefix = dateKey(month).slice(0, 7)
@@ -133,7 +138,7 @@ export function HistoryPage() {
                   <li key={item.id} className={styles.item}>
                     <Link to={`/practices/${item.id}`} className={styles.link}>
                       <span className={styles.row}>
-                        <span className={styles.time}>{timeLabel.format(new Date(item.createdAt))}</span>
+                        <span className={styles.time}>{timeLabel.format(new Date(activityAt(item)))}</span>
                         <Badge tone={item.canProceed ? 'primary' : 'neutral'}>
                           {item.canProceed ? '이어하기' : '마침'}
                         </Badge>

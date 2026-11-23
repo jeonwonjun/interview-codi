@@ -12,7 +12,7 @@ describe('달력 계산', () => {
 
   it('서버 시각을 브라우저 날짜로 묶는다', () => {
     const local = new Date(2026, 10, 18, 23, 30)
-    const groups = groupByDay([{ createdAt: local.toISOString(), id: 1 }])
+    const groups = groupByDay([{ at: local.toISOString(), id: 1 }], (item) => item.at)
 
     expect([...groups.keys()]).toEqual(['2026-11-18'])
   })

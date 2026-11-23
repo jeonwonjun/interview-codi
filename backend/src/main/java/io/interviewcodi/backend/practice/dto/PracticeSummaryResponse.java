@@ -11,6 +11,8 @@ public record PracticeSummaryResponse(
         int questionCount,
         // 답변 시도 수(다시 답하기 포함, 교정은 세지 않음). 달력에서 답한 날만 표시할 때 쓴다.
         int answerCount,
+        // 마지막 답변 시각. 며칠에 걸쳐 이어 한 연습도 실제로 답한 날로 달력에 묶는다. 답이 없으면 null.
+        OffsetDateTime lastAnsweredAt,
         boolean canProceed
 ) {
 }
