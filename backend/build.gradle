@@ -35,7 +35,7 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform {
-		excludeTags 'load', 'eval'
+		excludeTags 'load', 'eval', 'stt-eval'
 	}
 }
 
@@ -65,6 +65,24 @@ tasks.register('aiEval', Test) {
 	classpath = sourceSets.test.runtimeClasspath
 	useJUnitPlatform {
 		includeTags 'eval'
+	}
+	systemProperties System.properties.findAll { it.key.toString().startsWith('eval.') }
+	outputs.upToDateWhen { false }
+	testLogging {
+		showStandardStreams = true
+	}
+}
+
+// 음성인식 제공자 평가. 녹음은 저장소 루트 eval-audio/(Git 제외). aiEval과 태그를 나눠 한쪽 실행이 다른 쪽 요금을 쓰지 않게 한다.
+// ./gradlew sttEval -Deval.stt=openai,rtzr,clova                    (계획만 출력)
+// ./gradlew sttEval -Deval.stt=openai -Deval.limit=1 -Deval.execute=true   (실제 호출)
+tasks.register('sttEval', Test) {
+	description = 'Runs speech-to-text provider evaluations tagged with "stt-eval".'
+	group = 'verification'
+	testClassesDirs = sourceSets.test.output.classesDirs
+	classpath = sourceSets.test.runtimeClasspath
+	useJUnitPlatform {
+		includeTags 'stt-eval'
 	}
 	systemProperties System.properties.findAll { it.key.toString().startsWith('eval.') }
 	outputs.upToDateWhen { false }
