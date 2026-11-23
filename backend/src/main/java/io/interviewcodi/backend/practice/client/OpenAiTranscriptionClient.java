@@ -21,6 +21,7 @@ import tools.jackson.databind.JsonNode;
  * <li>이 엔드포인트의 입력은 학습에 쓰지 않고 남용 감시용 보관도 없다(OpenAI 데이터 통제 표).</li>
  * <li>{@code gpt-transcribe}는 언어를 {@code languages[]}로 받는다. 이전 모델은 {@code language}를 받는다.</li>
  * <li>webm·m4a·mp3·wav 등을 받고, 파일 하나 최대 25MB.</li>
+ * <li>{@code prompt}로 녹음의 문맥을 줄 수 있다. 녹음과 같은 언어로 쓴다(2026-11-23 문서 기준, {@code gpt-transcribe} 지원).</li>
  * </ul>
  */
 public class OpenAiTranscriptionClient implements SpeechToTextClient {
@@ -49,6 +50,10 @@ public class OpenAiTranscriptionClient implements SpeechToTextClient {
             form.add("language", "ko");
         }
         form.add("response_format", "json");
+        // 녹음 언어와 같은 언어의 자유 문맥. 짧고 머뭇거린 답을 엉뚱한 문장으로 채우는 것을 줄이려고 넘긴다.
+        if (audio.context() != null && !audio.context().isBlank()) {
+            form.add("prompt", audio.context());
+        }
 
         long started = System.nanoTime();
         JsonNode response;

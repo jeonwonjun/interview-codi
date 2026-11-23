@@ -14,8 +14,13 @@ public interface SpeechToTextClient {
     /**
      * @param filename    확장자로 형식을 알리는 제공자가 있어 확장자를 포함한다
      * @param contentType 예: audio/webm, audio/mp4
+     * @param context     녹음의 문맥. 받는 제공자만 쓴다(OpenAI {@code prompt}). 없으면 null
      */
-    record AudioFile(byte[] bytes, String filename, String contentType) {
+    record AudioFile(byte[] bytes, String filename, String contentType, String context) {
+
+        public AudioFile(byte[] bytes, String filename, String contentType) {
+            this(bytes, filename, contentType, null);
+        }
     }
 
     /**

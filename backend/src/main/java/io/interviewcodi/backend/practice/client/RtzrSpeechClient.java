@@ -21,6 +21,8 @@ import tools.jackson.databind.JsonNode;
  * </ol>
  * 받는 형식은 mp4·m4a·mp3·amr·flac·wav다. 브라우저 기본 녹음 형식(webm)은 받지 않아 서비스에 쓰려면 변환이 필요하다.
  * 결과는 요청 뒤 3일 보관된다. 학습 사용 여부는 문서에서 찾지 못했다.
+ * <p>
+ * 문맥({@link AudioFile#context()})은 쓰지 않는다. 평가 실행기에서만 쓰는 클라이언트라 지원 여부를 확인하지 않았다.
  */
 public class RtzrSpeechClient implements SpeechToTextClient {
 

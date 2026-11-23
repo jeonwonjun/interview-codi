@@ -10,6 +10,7 @@ import io.interviewcodi.backend.practice.client.SpeechToTextClient.AudioFile;
 import io.interviewcodi.backend.practice.client.SpeechToTextClient.Transcription;
 import io.interviewcodi.backend.practice.client.SpeechToTextException;
 import io.interviewcodi.backend.practice.domain.AiRequestKind;
+import io.interviewcodi.backend.practice.domain.TranscriptionContext;
 import io.interviewcodi.backend.practice.repository.AiRequestRepository.ClaimedRequest;
 import io.interviewcodi.backend.practice.repository.RecordingRepository.TranscribeSource;
 import io.interviewcodi.backend.practice.service.AiRequestQueueService.Claim;
@@ -100,7 +101,8 @@ public class AiRequestProcessingService {
         try {
             byte[] audio = recordingStorage.load(source.storageKey()).getContentAsByteArray();
             String filename = "answer." + source.storageKey().substring(source.storageKey().lastIndexOf('.') + 1);
-            transcription = speechToTextClient.transcribe(new AudioFile(audio, filename, source.contentType()));
+            transcription = speechToTextClient.transcribe(new AudioFile(audio, filename, source.contentType(),
+                    TranscriptionContext.INTERVIEW_ANSWER));
         } catch (IOException ex) {
             return queue.fail(request, "RECORDING_READ_FAILED");
         } catch (SpeechToTextException ex) {

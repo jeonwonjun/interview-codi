@@ -19,6 +19,7 @@ import io.interviewcodi.backend.practice.client.SpeechToTextClient;
 import io.interviewcodi.backend.practice.client.SpeechToTextClient.AudioFile;
 import io.interviewcodi.backend.practice.client.SpeechToTextClient.Transcription;
 import io.interviewcodi.backend.practice.client.SpeechToTextException;
+import io.interviewcodi.backend.practice.domain.TranscriptionContext;
 import io.interviewcodi.backend.user.service.UserAccountService;
 import jakarta.servlet.http.Cookie;
 import java.util.UUID;
@@ -86,7 +87,7 @@ class TranscriptionProcessingTest {
     }
 
     @Test
-    @DisplayName("인식 문구가 버전 1이 되고, 같은 트랜잭션에서 그 버전의 피드백 요청이 만들어진다")
+    @DisplayName("면접 답변 문맥을 넘겨 인식하고, 인식 문구가 버전 1이 되며 같은 트랜잭션에서 피드백 요청이 만들어진다")
     void transcriptionBecomesFirstRevisionWithFeedbackRequest() throws Exception {
         when(speechToTextClient.transcribe(any())).thenReturn(new Transcription("  " + TEXT + " ", 1200, 5.0));
         long practiceId = createPractice();
@@ -105,6 +106,10 @@ class TranscriptionProcessingTest {
         assertThat(audio.getValue().bytes()).isEqualTo(WEBM);
         assertThat(audio.getValue().filename()).isEqualTo("answer.webm");
         assertThat(audio.getValue().contentType()).isEqualTo("audio/webm");
+        assertThat(audio.getValue().context()).isEqualTo(TranscriptionContext.INTERVIEW_ANSWER)
+                .as("질문 문장은 넘기지 않는다(말하지 않은 질문 문구가 끼어든다)")
+                .doesNotContain(jdbcClient.sql("select content from questions where practice_id = :id")
+                        .param("id", practiceId).query(String.class).single());
 
         assertThat(processing.processNext()).as("이어서 피드백 요청을 처리한다").isTrue();
         mockMvc.perform(get("/api/practices/{id}", practiceId).cookie(me))
