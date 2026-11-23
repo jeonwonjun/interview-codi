@@ -23,7 +23,12 @@ public enum ErrorCode {
     NOT_CURRENT_QUESTION(HttpStatus.CONFLICT, "지금 진행 중인 질문이 아닙니다."),
     REVISION_CONFLICT(HttpStatus.CONFLICT, "다른 곳에서 먼저 수정된 답변이에요. 최신 내용을 확인한 뒤 다시 수정해 주세요."),
     NO_MORE_QUESTIONS(HttpStatus.CONFLICT, "준비한 질문을 모두 연습했어요. 연습을 마치거나 지금 질문에 다시 답해 보세요."),
-    NOT_LATEST_REVISION(HttpStatus.CONFLICT, "수정된 답변이 있어요. 최신 답변으로 다시 시도해 주세요.");
+    NOT_LATEST_REVISION(HttpStatus.CONFLICT, "수정된 답변이 있어요. 최신 답변으로 다시 시도해 주세요."),
+
+    INVALID_RECORDING(HttpStatus.BAD_REQUEST, "녹음 파일을 읽을 수 없어요. 다시 녹음하거나 글로 답해 주세요."),
+    FILE_TOO_LARGE(HttpStatus.CONTENT_TOO_LARGE, "파일이 너무 커요. 녹음은 3분 안으로 해 주세요."),
+    RECORDING_NOT_FOUND(HttpStatus.NOT_FOUND, "녹음을 찾을 수 없습니다."),
+    TRANSCRIPTION_IN_PROGRESS(HttpStatus.CONFLICT, "음성을 글로 옮기는 중이에요. 끝난 뒤에 다시 시도해 주세요.");
 
     private final HttpStatus status;
     private final String message;

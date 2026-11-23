@@ -4,6 +4,7 @@ import io.interviewcodi.backend.common.error.BusinessException;
 import io.interviewcodi.backend.common.error.ErrorCode;
 import io.interviewcodi.backend.practice.domain.AiRequestKind;
 import io.interviewcodi.backend.practice.domain.AiRequestStatus;
+import io.interviewcodi.backend.practice.domain.InputMode;
 import io.interviewcodi.backend.practice.domain.PracticeStatus;
 import io.interviewcodi.backend.practice.dto.AiRequestResponse;
 import io.interviewcodi.backend.practice.dto.AnswerAttemptResponse;
@@ -14,11 +15,8 @@ import io.interviewcodi.backend.practice.repository.AnswerRepository.AttemptRow;
 import io.interviewcodi.backend.practice.repository.PracticeRepository;
 import io.interviewcodi.backend.practice.repository.QuestionRepository;
 import io.interviewcodi.backend.practice.repository.QuestionRepository.CurrentQuestion;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,13 +30,16 @@ public class AnswerService {
     private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
     private final AiRequestRepository aiRequestRepository;
+    private final AnswerAttemptReader answerAttemptReader;
 
     AnswerService(PracticeRepository practiceRepository, QuestionRepository questionRepository,
-                  AnswerRepository answerRepository, AiRequestRepository aiRequestRepository) {
+                  AnswerRepository answerRepository, AiRequestRepository aiRequestRepository,
+                  AnswerAttemptReader answerAttemptReader) {
         this.practiceRepository = practiceRepository;
         this.questionRepository = questionRepository;
         this.answerRepository = answerRepository;
         this.aiRequestRepository = aiRequestRepository;
+        this.answerAttemptReader = answerAttemptReader;
     }
 
     /**
@@ -72,8 +73,12 @@ public class AnswerService {
             throw new BusinessException(ErrorCode.NOT_CURRENT_QUESTION);
         }
 
+        if (aiRequestRepository.hasActiveTranscription(questionId)) {
+            throw new BusinessException(ErrorCode.TRANSCRIPTION_IN_PROGRESS);
+        }
+
         int attemptNo = answerRepository.nextAttemptNo(questionId);
-        long answerId = answerRepository.insertAnswer(questionId, attemptNo, clientRequestId);
+        long answerId = answerRepository.insertAnswer(questionId, attemptNo, clientRequestId, InputMode.TEXT);
         long revisionId = answerRepository.insertRevision(answerId, 1, normalized);
         aiRequestRepository.insertPending(practiceId, AiRequestKind.FEEDBACK, revisionId);
         return new SubmitResult(load(practiceId, answerId), true);
@@ -102,7 +107,11 @@ public class AnswerService {
             throw new BusinessException(ErrorCode.PRACTICE_COMPLETED);
         }
         AttemptRow current = answerRepository.findAttemptWithCurrentRevision(answerId).orElseThrow();
-        if (current.revisionNo() != baseRevisionNo) {
+        if (!current.hasRevision()) {
+            // 음성 시도가 아직 글로 옮겨지지 않았다. 고칠 문구가 없다.
+            throw new BusinessException(ErrorCode.TRANSCRIPTION_IN_PROGRESS);
+        }
+        if (current.revisionNo() != baseRevisionNo.intValue()) {
             throw new BusinessException(ErrorCode.REVISION_CONFLICT);
         }
         if (current.content().equals(normalized)) {
@@ -150,10 +159,7 @@ public class AnswerService {
     }
 
     private AnswerAttemptResponse load(long practiceId, long answerId) {
-        AttemptRow attempt = answerRepository.findAttemptWithCurrentRevision(answerId).orElseThrow();
-        Map<Long, RequestRow> requests = aiRequestRepository.findLatestFeedbackRequests(practiceId).stream()
-                .collect(Collectors.toMap(RequestRow::answerRevisionId, Function.identity()));
-        return PracticeService.toAttemptResponse(attempt, requests, Map.of());
+        return answerAttemptReader.read(practiceId, answerId);
     }
 
     /** 앞뒤 공백을 지우고 길이를 확인한다. 길이는 DB 제약과 같게 코드 포인트로 센다. */

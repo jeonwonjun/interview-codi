@@ -23,6 +23,6 @@ public class AiRequestService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.AI_REQUEST_NOT_FOUND));
         return new AiRequestStatusResponse(row.id(), row.kind().name(), row.status().name(),
                 row.discardReason() == null ? null : row.discardReason().name(), row.answerRevisionId(),
-                row.feedbackId(), row.questionId());
+                row.recordingId(), row.feedbackId(), row.questionId());
     }
 }
