@@ -63,6 +63,41 @@ public class RecordingRepository {
                 .optional();
     }
 
+    /** 인식에 넘길 파일 위치와 결과를 붙일 시도. */
+    public TranscribeSource findTranscribeSource(long recordingId) {
+        return jdbcClient.sql("""
+                        select answer_id, storage_key, content_type
+                        from recordings
+                        where id = :recordingId
+                        """)
+                .param("recordingId", recordingId)
+                .query(TranscribeSource.class)
+                .single();
+    }
+
+    /** 본인의 삭제되지 않은 연습에 속한 삭제되지 않은 녹음이면 연습 ID와 시도 ID. */
+    public Optional<RecordingOwner> findOwner(long recordingId, long userId) {
+        return jdbcClient.sql("""
+                        select p.id as practice_id, a.id as answer_id
+                        from recordings rec
+                        join answers a on a.id = rec.answer_id and a.deleted_at is null
+                        join questions q on q.id = a.question_id and q.deleted_at is null
+                        join practices p on p.id = q.practice_id
+                        where rec.id = :recordingId and rec.deleted_at is null
+                          and p.user_id = :userId and p.deleted_at is null
+                        """)
+                .param("recordingId", recordingId)
+                .param("userId", userId)
+                .query(RecordingOwner.class)
+                .optional();
+    }
+
+    public record TranscribeSource(long answerId, String storageKey, String contentType) {
+    }
+
+    public record RecordingOwner(long practiceId, long answerId) {
+    }
+
     public record RecordingRow(long id, long answerId, int durationMs) {
     }
 

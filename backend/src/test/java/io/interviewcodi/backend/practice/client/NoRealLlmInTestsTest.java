@@ -22,10 +22,11 @@ class NoRealLlmInTestsTest {
     private ApplicationContext context;
 
     @Test
-    @DisplayName("테스트에서는 가짜 생성기만 뜨고 실제 LLM 클라이언트는 만들지 않는다")
+    @DisplayName("테스트에서는 가짜 생성기·인식기만 뜨고 실제 LLM·음성인식 클라이언트는 만들지 않는다")
     void usesFakeGenerators() {
         assertThat(context.getBean(FeedbackGenerator.class)).isInstanceOf(FakeFeedbackGenerator.class);
         assertThat(context.getBean(FollowUpQuestionGenerator.class)).isInstanceOf(FakeFollowUpQuestionGenerator.class);
         assertThat(context.getBeanNamesForType(StructuredLlmClient.class)).isEmpty();
+        assertThat(context.getBean(SpeechToTextClient.class)).isInstanceOf(FakeSpeechToTextClient.class);
     }
 }

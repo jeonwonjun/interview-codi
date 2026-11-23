@@ -59,6 +59,20 @@ public class AiRequestRepository {
                 .list();
     }
 
+    /** 이 녹음의 가장 최근 인식 요청. */
+    public Optional<TranscribeRow> findLatestTranscribeRequest(long recordingId) {
+        return jdbcClient.sql("""
+                        select id, recording_id, status
+                        from ai_requests
+                        where recording_id = :recordingId and kind = 'TRANSCRIBE'
+                        order by id desc
+                        limit 1
+                        """)
+                .param("recordingId", recordingId)
+                .query(TranscribeRow.class)
+                .optional();
+    }
+
     /** 이 질문의 시도 중 아직 글로 옮기는 중(PENDING·RUNNING)인 음성 시도가 있는지. */
     public boolean hasActiveTranscription(long questionId) {
         return jdbcClient.sql("""
@@ -142,14 +156,12 @@ public class AiRequestRepository {
                         where id = (
                             select id
                             from ai_requests
-                            -- 인식 요청은 인식 워커(다음 단계)가 생기기 전까지 꺼내지 않는다.
-                            where kind <> 'TRANSCRIBE'
-                              and ((status = 'PENDING' and available_at <= now())
-                                or (status = 'RUNNING' and lease_until < now()))
+                            where (status = 'PENDING' and available_at <= now())
+                               or (status = 'RUNNING' and lease_until < now())
                             order by id
                             limit 1
                             for update skip locked)
-                        returning id, practice_id, kind, answer_revision_id, attempt_count, lease_token
+                        returning id, practice_id, kind, answer_revision_id, recording_id, attempt_count, lease_token
                         """)
                 .param("leaseToken", leaseToken)
                 .param("leaseSeconds", lease.toSeconds())
@@ -278,7 +290,8 @@ public class AiRequestRepository {
     public record RequestRow(long id, long answerRevisionId, AiRequestStatus status) {
     }
 
-    public record ClaimedRequest(long id, long practiceId, AiRequestKind kind, long answerRevisionId,
+    /** TRANSCRIBE는 {@code recordingId}만, 나머지 종류는 {@code answerRevisionId}만 있다(DB 검사 제약). */
+    public record ClaimedRequest(long id, long practiceId, AiRequestKind kind, Long answerRevisionId, Long recordingId,
                                  int attemptCount, UUID leaseToken) {
     }
 
