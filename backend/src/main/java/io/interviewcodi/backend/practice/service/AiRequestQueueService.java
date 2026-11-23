@@ -20,7 +20,9 @@ import io.interviewcodi.backend.practice.repository.QuestionRepository.CurrentQu
 import io.interviewcodi.backend.practice.repository.RecordingRepository;
 import io.interviewcodi.backend.practice.repository.RecordingRepository.TranscribeSource;
 import java.time.Duration;
+import java.util.EnumSet;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,7 +65,13 @@ public class AiRequestQueueService {
      */
     @Transactional
     public Optional<Claim> claim() {
-        Optional<ClaimedRequest> claimed = aiRequestRepository.claimNext(UUID.randomUUID(), LEASE);
+        return claim(EnumSet.allOf(AiRequestKind.class));
+    }
+
+    /** {@code kinds}에 든 종류만 꺼낸다. */
+    @Transactional
+    public Optional<Claim> claim(Set<AiRequestKind> kinds) {
+        Optional<ClaimedRequest> claimed = aiRequestRepository.claimNext(UUID.randomUUID(), LEASE, kinds);
         if (claimed.isEmpty()) {
             return Optional.empty();
         }

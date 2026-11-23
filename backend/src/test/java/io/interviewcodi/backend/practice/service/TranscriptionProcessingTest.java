@@ -19,9 +19,11 @@ import io.interviewcodi.backend.practice.client.SpeechToTextClient;
 import io.interviewcodi.backend.practice.client.SpeechToTextClient.AudioFile;
 import io.interviewcodi.backend.practice.client.SpeechToTextClient.Transcription;
 import io.interviewcodi.backend.practice.client.SpeechToTextException;
+import io.interviewcodi.backend.practice.domain.AiRequestKind;
 import io.interviewcodi.backend.practice.domain.TranscriptionContext;
 import io.interviewcodi.backend.user.service.UserAccountService;
 import jakarta.servlet.http.Cookie;
+import java.util.EnumSet;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.BeforeEach;
@@ -224,6 +226,19 @@ class TranscriptionProcessingTest {
         mockMvc.perform(write(post("/api/recordings/{id}/transcriptions", uploaded.recordingId())))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("PRACTICE_COMPLETED"));
+    }
+
+    @Test
+    @DisplayName("인식 전용 슬롯은 인식 요청만 꺼내고 피드백 요청은 남겨 둔다")
+    void transcribeOnlySlotSkipsOtherKinds() throws Exception {
+        when(speechToTextClient.transcribe(any())).thenReturn(new Transcription(TEXT, 1000, null));
+        Uploaded uploaded = upload(createPractice());
+
+        assertThat(processing.processNext(EnumSet.of(AiRequestKind.TRANSCRIBE))).isTrue();
+        assertThat(requestColumn(uploaded.requestId(), "status")).isEqualTo("SUCCEEDED");
+
+        assertThat(processing.processNext(EnumSet.of(AiRequestKind.TRANSCRIBE))).as("피드백은 꺼내지 않는다").isFalse();
+        assertThat(processing.processNext()).as("공용 슬롯이 피드백을 꺼낸다").isTrue();
     }
 
     private record Uploaded(long answerId, long recordingId, long requestId) {

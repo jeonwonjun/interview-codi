@@ -63,6 +63,14 @@ class FeedbackPipelineLoadTest {
     private static final Duration DURATION = Duration.ofSeconds(intProperty("load.durationSeconds", 180));
     private static final String DELAY_MIN = System.getProperty("load.aiDelayMin", "3s");
     private static final String DELAY_MAX = System.getProperty("load.aiDelayMax", "8s");
+    /** 음성으로 답할 확률. 음성 답변은 인식(TRANSCRIBE) → 버전 1 + 피드백 순서로 처리된다. */
+    private static final double VOICE_RATE = Double.parseDouble(System.getProperty("load.voiceRate", "0"));
+    private static final String STT_DELAY_MIN = System.getProperty("load.sttDelayMin", "2s");
+    private static final String STT_DELAY_MAX = System.getProperty("load.sttDelayMax", "6s");
+    /** 인식만 꺼내는 워커 슬롯 수(설계 5-2의 B안). 0이면 모든 슬롯이 모든 종류를 꺼낸다. */
+    private static final int TRANSCRIBE_SLOTS = intProperty("load.transcribeSlots", 0);
+    // webm(EBML) 서명으로 시작하는 가짜 녹음. 가짜 인식기는 내용을 보지 않는다.
+    private static final byte[] FAKE_WEBM = {0x1A, 0x45, (byte) 0xDF, (byte) 0xA3, 0x01, 0x02, 0x03, 0x04};
     /** 피드백을 받은 뒤 꼬리질문을 요청할 확률. 받으면 다음 답변은 그 꼬리질문에 한다. */
     private static final double FOLLOW_UP_RATE = Double.parseDouble(System.getProperty("load.followUpRate", "0"));
     private static final Duration SUBMIT_INTERVAL = Duration.ofSeconds(60);
@@ -87,11 +95,16 @@ class FeedbackPipelineLoadTest {
     private final AtomicInteger httpErrors = new AtomicInteger();
     private final AtomicInteger submitted = new AtomicInteger();
     private final AtomicInteger followUps = new AtomicInteger();
+    private final AtomicInteger voiceAnswers = new AtomicInteger();
 
     @DynamicPropertySource
     static void loadProperties(DynamicPropertyRegistry registry) {
         // 부하 측정은 비용이 들지 않도록 항상 가짜 생성기로 돌린다(.env의 AI_PROVIDER를 덮어쓴다).
         registry.add("practice.ai.provider", () -> "fake");
+        registry.add("practice.stt.provider", () -> "fake");
+        registry.add("practice.stt.fake.delay-min", () -> STT_DELAY_MIN);
+        registry.add("practice.stt.fake.delay-max", () -> STT_DELAY_MAX);
+        registry.add("practice.ai.worker.transcribe-slots", () -> TRANSCRIBE_SLOTS);
         registry.add("practice.ai.worker.enabled", () -> "true");
         registry.add("practice.ai.worker.concurrency", () -> WORKER_CONCURRENCY);
         registry.add("practice.ai.fake.delay-min", () -> DELAY_MIN);
@@ -122,8 +135,8 @@ class FeedbackPipelineLoadTest {
 
         String report = report(start, backlogSamples);
         System.out.println(report);
-        Path out = Path.of("build/reports/load/feedback-pipeline-c" + WORKER_CONCURRENCY + "-f"
-                + Math.round(FOLLOW_UP_RATE * 100) + ".md");
+        Path out = Path.of("build/reports/load/feedback-pipeline-c" + WORKER_CONCURRENCY + "-t" + TRANSCRIBE_SLOTS
+                + "-f" + Math.round(FOLLOW_UP_RATE * 100) + "-v" + Math.round(VOICE_RATE * 100) + ".md");
         Files.createDirectories(out.getParent());
         Files.writeString(out, report);
 
@@ -141,9 +154,9 @@ class FeedbackPipelineLoadTest {
             Instant next = start.plusMillis(ThreadLocalRandom.current().nextLong(spread));
             while (next.isBefore(stopSubmitting)) {
                 sleepUntil(next);
-                String body = "{\"clientRequestId\":\"" + UUID.randomUUID()
-                        + "\",\"content\":\"예약 기능에서 날짜 검증과 오류 응답을 맡았습니다. 입력값이 비어 있으면 400을 돌려주도록 했습니다.\"}";
-                String attempt = send("POST", "/api/questions/" + questionId + "/answers", body, cookie);
+                String attempt = ThreadLocalRandom.current().nextDouble() < VOICE_RATE
+                        ? answerByVoice(practiceId, questionId, cookie)
+                        : answerByText(questionId, cookie);
                 submitted.incrementAndGet();
                 long requestId = extract(attempt.substring(attempt.indexOf("\"feedbackRequest\"")), "id");
                 pollUntilFinished(requestId, cookie);
@@ -163,6 +176,54 @@ class FeedbackPipelineLoadTest {
             httpErrors.incrementAndGet();
             ex.printStackTrace();
         }
+    }
+
+    /** 텍스트 답변. 응답(시도)에 버전과 피드백 요청이 바로 있다. */
+    private String answerByText(long questionId, Cookie cookie) throws Exception {
+        String body = "{\"clientRequestId\":\"" + UUID.randomUUID()
+                + "\",\"content\":\"예약 기능에서 날짜 검증과 오류 응답을 맡았습니다. 입력값이 비어 있으면 400을 돌려주도록 했습니다.\"}";
+        return send("POST", "/api/questions/" + questionId + "/answers", body, cookie);
+    }
+
+    /**
+     * 음성 답변. 화면처럼 인식 요청을 폴링하다가 끝나면 상세를 다시 읽어, 생긴 버전과 피드백 요청이 든 시도를 돌려준다.
+     */
+    private String answerByVoice(long practiceId, long questionId, Cookie cookie) throws Exception {
+        String boundary = "load-" + UUID.randomUUID();
+        byte[] body = multipart(boundary, UUID.randomUUID());
+        HttpRequest request = HttpRequest.newBuilder(
+                        URI.create("http://localhost:" + port + "/api/questions/" + questionId + "/voice-answers"))
+                .header("Cookie", cookie.getName() + "=" + cookie.getValue())
+                .header("Origin", "http://localhost:" + port)
+                .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                .POST(HttpRequest.BodyPublishers.ofByteArray(body))
+                .build();
+        HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() >= 400) {
+            httpErrors.incrementAndGet();
+            throw new IllegalStateException("POST voice-answers -> " + response.statusCode());
+        }
+        voiceAnswers.incrementAndGet();
+        String attempt = response.body();
+        long answerId = extract(attempt, "id");
+        pollUntilFinished(extract(attempt.substring(attempt.indexOf("\"transcriptionRequest\"")), "id"), cookie);
+        String detail = send("GET", "/api/practices/" + practiceId, null, cookie);
+        return detail.substring(detail.indexOf("{\"id\":" + answerId + ",\"questionId\""));
+    }
+
+    private static byte[] multipart(String boundary, UUID clientRequestId) throws IOException {
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        String head = "--" + boundary + "\r\n"
+                + "Content-Disposition: form-data; name=\"clientRequestId\"\r\n\r\n" + clientRequestId + "\r\n"
+                + "--" + boundary + "\r\n"
+                + "Content-Disposition: form-data; name=\"durationMs\"\r\n\r\n60000\r\n"
+                + "--" + boundary + "\r\n"
+                + "Content-Disposition: form-data; name=\"audio\"; filename=\"answer.webm\"\r\n"
+                + "Content-Type: audio/webm\r\n\r\n";
+        out.write(head.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        out.write(FAKE_WEBM);
+        out.write(("\r\n--" + boundary + "--\r\n").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        return out.toByteArray();
     }
 
     private String pollUntilFinished(long requestId, Cookie cookie) throws Exception {
@@ -246,6 +307,19 @@ class FeedbackPipelineLoadTest {
                         """)
                 .query()
                 .singleRow();
+        Map<String, Object> voice = jdbcClient.sql("""
+                        select count(*) as total,
+                               percentile_cont(0.50) within group (order by extract(epoch from f.finished_at - t.created_at)) as p50,
+                               percentile_cont(0.95) within group (order by extract(epoch from f.finished_at - t.created_at)) as p95,
+                               percentile_cont(0.99) within group (order by extract(epoch from f.finished_at - t.created_at)) as p99
+                        from ai_requests t
+                        join recordings rec on rec.id = t.recording_id
+                        join answer_revisions r on r.answer_id = rec.answer_id and r.revision_no = 1
+                        join ai_requests f on f.answer_revision_id = r.id and f.kind = 'FEEDBACK' and f.status = 'SUCCEEDED'
+                        where t.kind = 'TRANSCRIBE' and t.status = 'SUCCEEDED'
+                        """)
+                .query()
+                .singleRow();
         List<Long> polls = new ArrayList<>(pollMillis);
         Collections.sort(polls);
         StringBuilder table = new StringBuilder();
@@ -261,21 +335,26 @@ class FeedbackPipelineLoadTest {
         return """
                 # 피드백 파이프라인 측정 (%s)
 
-                조건: 가상 사용자 %d명, 1인당 %d초에 답변 1건, 꼬리질문 요청 확률 %.0f%%, 측정 %d초 후 큐가 빌 때까지 대기. 워커 동시 처리 %d, 가짜 AI 지연 %s~%s(균등).
+                조건: 가상 사용자 %d명, 1인당 %d초에 답변 1건, 꼬리질문 요청 확률 %.0f%%, 측정 %d초 후 큐가 빌 때까지 대기. 워커 공용 슬롯 %d + 인식 전용 슬롯 %d, 가짜 AI 지연 %s~%s(균등).
+                음성 답변 확률 %.0f%%, 가짜 인식 지연 %s~%s(균등).
                 환경: 로컬 1대, 서버·워커·부하 클라이언트가 같은 JVM, PostgreSQL 18.6(Testcontainers).
 
-                제출 %d건, 꼬리질문 요청 %d건. AI 요청 처리량(성공 ÷ 첫 접수~마지막 완료) %.2f건/초, 평균 도착률 %.2f건/초.
+                제출 %d건(음성 %d건), 꼬리질문 요청 %d건. AI 요청 처리량(성공 ÷ 첫 접수~마지막 완료) %.2f건/초, 평균 도착률 %.2f건/초.
 
                 | 종류 | 전체 / 성공 / 실패 / 버림 | 큐 대기 p50 / p95 / p99 | 전체 지연 p50 / p95 / p99 |
                 | --- | --- | --- | --- |
                 %s
+                음성 답변 제출 → 피드백(인식 접수 ~ 버전 1 피드백 완료) p50 / p95 / p99: %.1f / %.1f / %.1f초 (%s건)
+
                 폴링 응답 p50 / p95 / p99 (참고): %d / %d / %d ms (%d건)
 
                 대기열 표본(15초마다):
                 %s
                 """.formatted(start, USERS, SUBMIT_INTERVAL.toSeconds(), FOLLOW_UP_RATE * 100, DURATION.toSeconds(),
-                WORKER_CONCURRENCY, DELAY_MIN, DELAY_MAX, submitted.get(), followUps.get(), succeeded / span,
-                arrival, table, percentile(polls, 0.50), percentile(polls, 0.95), percentile(polls, 0.99),
+                WORKER_CONCURRENCY, TRANSCRIBE_SLOTS, DELAY_MIN, DELAY_MAX, VOICE_RATE * 100, STT_DELAY_MIN,
+                STT_DELAY_MAX, submitted.get(), voiceAnswers.get(), followUps.get(), succeeded / span,
+                arrival + voiceAnswers.get() / span, table, num(voice, "p50"), num(voice, "p95"), num(voice, "p99"),
+                voice.get("total"), percentile(polls, 0.50), percentile(polls, 0.95), percentile(polls, 0.99),
                 polls.size(), String.join("\n", backlogSamples.stream().map(sample -> "- " + sample).toList()));
     }
 
